@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project Euler風 | 問題サイト（URLパラメータ対応）</title>
+    <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+<header>
+    <a id="homeLink" class="container brand" href="./">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+            <div class="title">Euler-like Problems</div>
+            <div class="muted" style="font-size:12px">URLパラメータ <span class="mono">?id=問題ID</span> で出題を切替</div>
+        </div>
+    </a>
+</header>
+
+<main class="container">
+    <aside class="card">
+        <div class="pad">
+            <h3>Problems</h3>
+            <div id="problemList" class="list"></div>
+        </div>
+    </aside>
+
+    <section class="card">
+        <div class="pad problem">
+            <div class="meta"><span class="badge" id="problemIdBadge"></span><span class="badge" id="problemDifficultyBadge"></span></div>
+            <h2 id="problemTitle">...</h2>
+            <div id="problemStatement" class="statement">...</div>
+
+            <form id="answerForm"></form>
+
+            <div class="actions">
+                <button type="submit" form="answerForm" class="primary">解答を送信 (Submit)</button>
+                <button type="button" id="resetBtn" class="ghost">この問題の試行回数をリセット</button>
+                <a id="shareLink" class="ghost" href="#">問題リンクをコピー</a>
+            </div>
+
+            <div id="statusBox" class="status" style="display:none"></div>
+
+            <div id="hints" class="hints"></div>
+
+            <div class="foot">
+                <div>Storage: Solved state persists in browser</div>
+                <div id="solvedMark"></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script src="scripts/problems.js"></script>
+<script src="scripts/main.js"></script>
+</body>
+</html>
+
+
