@@ -203,6 +203,90 @@ main { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 16px
     margin: 0;
 }
 
+.board-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.board-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.board-form {
+    display: grid;
+    gap: 12px;
+}
+.board-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.board-field label {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+.board-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.board-feedback {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+.board-feedback[data-tone="error"] {
+    color: var(--bad);
+}
+.board-feedback[data-tone="success"] {
+    color: var(--ok);
+}
+.board-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(15, 21, 30, .6);
+    border: 1px solid var(--border);
+    min-height: 96px;
+}
+.board-messages:empty::before {
+    content: 'まだ投稿がありません。最初のメッセージを送ってみましょう。';
+    color: var(--text-dim);
+    font-size: 13px;
+}
+.board-post {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(37, 50, 67, .8);
+    background: rgba(20, 28, 38, .85);
+}
+.board-placeholder {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+.board-post .author {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--accent);
+}
+.board-post .timestamp {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+.board-post .message {
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 form#answerForm { display:flex; flex-direction: column; gap: 12px; }
 .row { display:grid; grid-template-columns: 180px 1fr; gap: 10px; align-items:center; }
 @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }

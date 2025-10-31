@@ -34,6 +34,7 @@
                     <div class="tablist" role="tablist" aria-label="Problem content tabs">
                         <button type="button" class="tab active" role="tab" aria-selected="true" id="problemTab-statement" aria-controls="problemStatement" data-problem-tab="statement">問題</button>
                         <button type="button" class="tab" role="tab" aria-selected="false" id="problemTab-explanation" aria-controls="problemExplanation" data-problem-tab="explanation">解説</button>
+                        <button type="button" class="tab" role="tab" aria-selected="false" id="problemTab-board" aria-controls="problemBoard" data-problem-tab="board">掲示板</button>
                     </div>
                 </div>
 
@@ -42,6 +43,25 @@
                 <div class="tab-panels">
                     <div id="problemStatement" class="statement tab-panel" role="tabpanel" aria-labelledby="problemTab-statement" data-problem-panel="statement" tabindex="0">...</div>
                     <div id="problemExplanation" class="statement tab-panel" role="tabpanel" aria-labelledby="problemTab-explanation" data-problem-panel="explanation" tabindex="0" hidden>...</div>
+                    <div id="problemBoard" class="statement tab-panel board-panel" role="tabpanel" aria-labelledby="problemTab-board" data-problem-panel="board" tabindex="0" hidden>
+                        <div class="board-content">
+                            <form id="problemBoardForm" class="board-form" autocomplete="off">
+                                <div class="board-field">
+                                    <label for="boardName">名前</label>
+                                    <input type="text" id="boardName" name="name" placeholder="匿名" />
+                                </div>
+                                <div class="board-field">
+                                    <label for="boardMessage">本文</label>
+                                    <textarea id="boardMessage" name="message" rows="3" placeholder="メッセージを入力してください"></textarea>
+                                </div>
+                                <div class="board-actions">
+                                    <button type="submit" class="primary">投稿</button>
+                                    <span id="problemBoardFeedback" class="board-feedback" aria-live="polite"></span>
+                                </div>
+                            </form>
+                            <div id="problemBoardMessages" class="board-messages" aria-live="polite"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -220,10 +220,25 @@ const shareLink = $('#shareLink');
 const actionsEl = document.querySelector('.actions');
 const footEl = document.querySelector('.foot');
 
+const boardPanel = $('#problemBoard');
+const boardForm = $('#problemBoardForm');
+const boardNameInput = $('#boardName');
+const boardMessageInput = $('#boardMessage');
+const boardMessagesEl = $('#problemBoardMessages');
+const boardFeedbackEl = $('#problemBoardFeedback');
+
 const homeLink = document.querySelector('#homeLink');
 
 const EXPLANATION_PLACEHOLDER_HTML = '<p>Explanation will be added soon.</p>';
-const HIDE_ON_EXPLANATION = [formEl, actionsEl, statusEl, hintsEl, footEl];
+const TAB_HIDE_MAP = {
+    explanation: [formEl, actionsEl, statusEl, hintsEl, footEl],
+    board: [formEl, actionsEl, statusEl, hintsEl, footEl],
+};
+const TAB_HIDE_ELEMENTS = Array.from(new Set(Object.values(TAB_HIDE_MAP).flat().filter(Boolean)));
+
+if (boardMessageInput) {
+    enableAutoResize(boardMessageInput);
+}
 
 const rememberDisplay = (el) => {
     if (!el) return;
@@ -258,10 +273,10 @@ const showProblemTab = (target) => {
         panel.setAttribute('tabindex', shouldShow ? '0' : '-1');
     });
 
-    const hideOthers = key === 'explanation';
-    HIDE_ON_EXPLANATION.forEach((el) => {
+    const hideList = new Set(TAB_HIDE_MAP[key] || []);
+    TAB_HIDE_ELEMENTS.forEach((el) => {
         if (!el) return;
-        if (hideOthers) {
+        if (hideList.has(el)) {
             rememberDisplay(el);
             el.style.display = 'none';
         } else {
@@ -288,6 +303,143 @@ if (tabButtons.length) {
         });
     });
     showProblemTab('statement');
+}
+
+
+
+const BOARD_MESSAGES = new Map();
+let activeProblemId = null;
+let boardFeedbackTimer = null;
+
+const setBoardFeedback = (message, tone) => {
+    if (!boardFeedbackEl) return;
+    if (boardFeedbackTimer) {
+        clearTimeout(boardFeedbackTimer);
+        boardFeedbackTimer = null;
+    }
+    if (!message) {
+        boardFeedbackEl.textContent = '';
+        boardFeedbackEl.removeAttribute('data-tone');
+        return;
+    }
+    boardFeedbackEl.textContent = message;
+    if (tone) {
+        boardFeedbackEl.setAttribute('data-tone', tone);
+    } else {
+        boardFeedbackEl.removeAttribute('data-tone');
+    }
+    boardFeedbackTimer = window.setTimeout(() => {
+        boardFeedbackEl.textContent = '';
+        boardFeedbackEl.removeAttribute('data-tone');
+        boardFeedbackTimer = null;
+    }, 3200);
+};
+
+const setBoardAvailability = (enabled, placeholderHtml) => {
+    if (!boardForm) return;
+    Array.from(boardForm.elements).forEach((el) => {
+        if (typeof el.disabled === 'boolean') {
+            el.disabled = !enabled;
+        }
+    });
+    if (!enabled) {
+        boardForm.reset();
+        if (boardMessageInput) {
+            boardMessageInput.dispatchEvent(new Event('input'));
+        }
+    }
+    setBoardFeedback('');
+    if (boardMessagesEl && placeholderHtml !== undefined) {
+        boardMessagesEl.innerHTML = '';
+        if (placeholderHtml) {
+            const placeholder = document.createElement('p');
+            placeholder.className = 'board-placeholder';
+            placeholder.innerHTML = placeholderHtml;
+            boardMessagesEl.appendChild(placeholder);
+        }
+    }
+};
+
+const formatBoardTimestamp = (ms) => {
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('ja-JP', { hour12: false });
+};
+
+const renderBoardMessages = (problemId) => {
+    if (!boardMessagesEl) return;
+    boardMessagesEl.innerHTML = '';
+
+    const posts = BOARD_MESSAGES.get(problemId) || [];
+    if (!posts.length) {
+        return;
+    }
+
+    posts.forEach((post) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'board-post';
+
+        const author = document.createElement('div');
+        author.className = 'author';
+        author.textContent = post.name || '匿名';
+        wrapper.appendChild(author);
+
+        const timestamp = document.createElement('div');
+        timestamp.className = 'timestamp';
+        timestamp.textContent = formatBoardTimestamp(post.createdAt);
+        if (timestamp.textContent) {
+            wrapper.appendChild(timestamp);
+        }
+
+        const message = document.createElement('div');
+        message.className = 'message';
+        message.textContent = post.message;
+        wrapper.appendChild(message);
+
+        boardMessagesEl.appendChild(wrapper);
+    });
+
+    boardMessagesEl.lastElementChild?.scrollIntoView({ block: 'end' });
+};
+
+function handleBoardSubmit(event) {
+    event.preventDefault();
+    if (!activeProblemId) {
+        setBoardFeedback('問題を選択してください。', 'error');
+        return;
+    }
+
+    const nameRaw = (boardNameInput?.value || '').trim();
+    const messageRaw = (boardMessageInput?.value || '').trim();
+
+    if (!messageRaw) {
+        setBoardFeedback('本文を入力してください。', 'error');
+        boardMessageInput?.focus();
+        return;
+    }
+
+    const entry = {
+        id: Date.now(),
+        name: nameRaw || '匿名',
+        message: messageRaw,
+        createdAt: Date.now(),
+    };
+
+    const list = BOARD_MESSAGES.get(activeProblemId) || [];
+    list.push(entry);
+    BOARD_MESSAGES.set(activeProblemId, list);
+
+    if (boardMessageInput) {
+        boardMessageInput.value = '';
+        boardMessageInput.dispatchEvent(new Event('input'));
+    }
+
+    renderBoardMessages(activeProblemId);
+    setBoardFeedback('投稿しました。', 'success');
+}
+
+if (boardForm) {
+    boardForm.addEventListener('submit', handleBoardSubmit);
 }
 
 
@@ -363,6 +515,8 @@ function disableActions() {
 }
 
 function renderLanding() {
+    activeProblemId = null;
+
     idBadge.textContent = 'ID: -';
     idBadge.style.display = '';
     difficultyBadge.textContent = '';
@@ -394,11 +548,17 @@ function renderLanding() {
         explanationEl.innerHTML = '<p>Select a problem from the list to view its explanation here.</p>';
     }
 
+    if (boardPanel) {
+        setBoardAvailability(false, '問題を選択すると掲示板が利用できます。');
+    }
+
     disableActions();
     showProblemTab('statement');
 }
 
 function renderProblemNotFound(id) {
+    activeProblemId = null;
+
     idBadge.textContent = `ID: ${id}`;
     idBadge.style.display = '';
     difficultyBadge.textContent = '';
@@ -424,11 +584,17 @@ function renderProblemNotFound(id) {
         explanationEl.innerHTML = '<p>Explanation is unavailable for a missing problem.</p>';
     }
 
+    if (boardPanel) {
+        setBoardAvailability(false, '存在しない問題の掲示板は利用できません。');
+    }
+
     disableActions();
     showProblemTab('statement');
 }
 
 function renderProblem(p) {
+    activeProblemId = p.id;
+
     idBadge.textContent = `ID: ${p.id}`;
     idBadge.style.display = '';
 
@@ -456,6 +622,15 @@ function renderProblem(p) {
         explanationEl.innerHTML = (typeof explanationHtml === 'string' && explanationHtml.trim())
             ? explanationHtml
             : EXPLANATION_PLACEHOLDER_HTML;
+    }
+    if (boardPanel) {
+        setBoardAvailability(true);
+        renderBoardMessages(p.id);
+        setBoardFeedback('');
+        if (boardMessageInput) {
+            boardMessageInput.value = '';
+            boardMessageInput.dispatchEvent(new Event('input'));
+        }
     }
     showProblemTab('statement');
     solvedMarkEl.textContent = storage.isSolved(p.id) ? 'Solved' : '';
