@@ -27,9 +27,23 @@
 
     <section class="card">
         <div class="pad problem">
-            <div class="meta"><span class="badge" id="problemIdBadge"></span><span class="badge" id="problemDifficultyBadge"></span></div>
-            <h2 id="problemTitle">...</h2>
-            <div id="problemStatement" class="statement">...</div>
+            <div class="problem-tabs" data-problem-tabs>
+                <div class="meta">
+                    <span class="badge" id="problemIdBadge"></span>
+                    <span class="badge" id="problemDifficultyBadge"></span>
+                    <div class="tablist" role="tablist" aria-label="Problem content tabs">
+                        <button type="button" class="tab active" role="tab" aria-selected="true" id="problemTab-statement" aria-controls="problemStatement" data-problem-tab="statement">問題</button>
+                        <button type="button" class="tab" role="tab" aria-selected="false" id="problemTab-explanation" aria-controls="problemExplanation" data-problem-tab="explanation">解説</button>
+                    </div>
+                </div>
+
+                <h2 id="problemTitle">...</h2>
+
+                <div class="tab-panels">
+                    <div id="problemStatement" class="statement tab-panel" role="tabpanel" aria-labelledby="problemTab-statement" data-problem-panel="statement" tabindex="0">...</div>
+                    <div id="problemExplanation" class="statement tab-panel" role="tabpanel" aria-labelledby="problemTab-explanation" data-problem-panel="explanation" tabindex="0" hidden>...</div>
+                </div>
+            </div>
 
             <form id="answerForm"></form>
 

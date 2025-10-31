@@ -200,6 +200,10 @@ const difficultyBadge = $('#problemDifficultyBadge');
 const titleEl = $('#problemTitle');
 
 const stmtEl = $('#problemStatement');
+const explanationEl = $('#problemExplanation');
+
+const tabButtons = Array.from(document.querySelectorAll('[data-problem-tab]'));
+const tabPanels = Array.from(document.querySelectorAll('[data-problem-panel]'));
 
 const formEl = $('#answerForm');
 
@@ -214,8 +218,77 @@ const resetBtn = $('#resetBtn');
 const shareLink = $('#shareLink');
 
 const actionsEl = document.querySelector('.actions');
+const footEl = document.querySelector('.foot');
 
 const homeLink = document.querySelector('#homeLink');
+
+const EXPLANATION_PLACEHOLDER_HTML = '<p>Explanation will be added soon.</p>';
+const HIDE_ON_EXPLANATION = [formEl, actionsEl, statusEl, hintsEl, footEl];
+
+const rememberDisplay = (el) => {
+    if (!el) return;
+    if (el.dataset.tabPrevDisplayStored === '1') return;
+    el.dataset.tabPrevDisplayStored = '1';
+    el.dataset.tabPrevDisplay = el.style.display || '';
+};
+
+const restoreDisplay = (el) => {
+    if (!el) return;
+    if (el.dataset.tabPrevDisplayStored !== '1') return;
+    el.style.display = el.dataset.tabPrevDisplay || '';
+    delete el.dataset.tabPrevDisplayStored;
+    delete el.dataset.tabPrevDisplay;
+};
+
+const showProblemTab = (target) => {
+    if (!tabPanels.length || !tabButtons.length) return;
+    const available = new Set(tabPanels.map((panel) => panel.dataset.problemPanel));
+    const key = available.has(target) ? target : 'statement';
+
+    tabButtons.forEach((btn) => {
+        const isActive = btn.dataset.problemTab === key;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        btn.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    tabPanels.forEach((panel) => {
+        const shouldShow = panel.dataset.problemPanel === key;
+        panel.hidden = !shouldShow;
+        panel.setAttribute('tabindex', shouldShow ? '0' : '-1');
+    });
+
+    const hideOthers = key === 'explanation';
+    HIDE_ON_EXPLANATION.forEach((el) => {
+        if (!el) return;
+        if (hideOthers) {
+            rememberDisplay(el);
+            el.style.display = 'none';
+        } else {
+            restoreDisplay(el);
+        }
+    });
+};
+
+if (tabButtons.length) {
+    tabButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            showProblemTab(btn.dataset.problemTab);
+        });
+        btn.addEventListener('keydown', (ev) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(ev.key)) return;
+            ev.preventDefault();
+            const dir = ev.key === 'ArrowRight' ? 1 : -1;
+            const idx = tabButtons.indexOf(btn);
+            if (idx < 0) return;
+            const nextIdx = (idx + dir + tabButtons.length) % tabButtons.length;
+            const nextBtn = tabButtons[nextIdx];
+            nextBtn?.focus();
+            nextBtn?.click();
+        });
+    });
+    showProblemTab('statement');
+}
 
 
 
@@ -317,7 +390,12 @@ function renderLanding() {
     formEl.replaceChildren();
     formEl.onsubmit = null;
 
+    if (explanationEl) {
+        explanationEl.innerHTML = '<p>Select a problem from the list to view its explanation here.</p>';
+    }
+
     disableActions();
+    showProblemTab('statement');
 }
 
 function renderProblemNotFound(id) {
@@ -342,7 +420,12 @@ function renderProblemNotFound(id) {
     formEl.replaceChildren();
     formEl.onsubmit = null;
 
+    if (explanationEl) {
+        explanationEl.innerHTML = '<p>Explanation is unavailable for a missing problem.</p>';
+    }
+
     disableActions();
+    showProblemTab('statement');
 }
 
 function renderProblem(p) {
@@ -358,7 +441,23 @@ function renderProblem(p) {
     }
 
     titleEl.textContent = p.title;
-    stmtEl.innerHTML = p.statement;
+    stmtEl.innerHTML = p.statement || '';
+    if (explanationEl) {
+        let explanationHtml = '';
+        if (typeof p.explanation === 'function') {
+            try {
+                explanationHtml = p.explanation(p);
+            } catch (err) {
+                console.error(err);
+            }
+        } else if (typeof p.explanation === 'string') {
+            explanationHtml = p.explanation;
+        }
+        explanationEl.innerHTML = (typeof explanationHtml === 'string' && explanationHtml.trim())
+            ? explanationHtml
+            : EXPLANATION_PLACEHOLDER_HTML;
+    }
+    showProblemTab('statement');
     solvedMarkEl.textContent = storage.isSolved(p.id) ? 'Solved' : '';
     statusEl.style.display = 'none';
     statusEl.textContent = '';
