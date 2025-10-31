@@ -405,7 +405,7 @@ const renderBoardMessages = (problemId) => {
 function handleBoardSubmit(event) {
     event.preventDefault();
     if (!activeProblemId) {
-        setBoardFeedback('問題を選択してください。', 'error');
+        setBoardFeedback('Please select a problem before posting.', 'error');
         return;
     }
 
@@ -413,7 +413,7 @@ function handleBoardSubmit(event) {
     const messageRaw = (boardMessageInput?.value || '').trim();
 
     if (!messageRaw) {
-        setBoardFeedback('本文を入力してください。', 'error');
+        setBoardFeedback('Please enter a message.', 'error');
         boardMessageInput?.focus();
         return;
     }
@@ -435,7 +435,7 @@ function handleBoardSubmit(event) {
     }
 
     renderBoardMessages(activeProblemId);
-    setBoardFeedback('投稿しました。', 'success');
+    setBoardFeedback('Posted your message.', 'success');
 }
 
 if (boardForm) {
@@ -549,7 +549,7 @@ function renderLanding() {
     }
 
     if (boardPanel) {
-        setBoardAvailability(false, '問題を選択すると掲示板が利用できます。');
+        setBoardAvailability(false, 'Select a problem to use the board.');
     }
 
     disableActions();
@@ -585,7 +585,7 @@ function renderProblemNotFound(id) {
     }
 
     if (boardPanel) {
-        setBoardAvailability(false, '存在しない問題の掲示板は利用できません。');
+        setBoardAvailability(false, 'This board is unavailable for a missing problem.');
     }
 
     disableActions();
