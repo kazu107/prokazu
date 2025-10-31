@@ -1,91 +1,13 @@
 /* =============================================================
-
-   使い方 / How to add problems
-
+   Problem data overview
    -------------------------------------------------------------
-
-   1) 下の PROBLEMS にオブジェクトを追加するだけ。
-
-      必須プロパティ:
-
-        - id        : 一意なID（URLは ?id=このID）
-
-        - title     : タイトル
-
-        - statement : HTML文字列（<em>, <code> 可）
-
-        - inputs    : 回答フィールドの配列
-
-            { id, label, type:"number"|"text", placeholder }
-
-        - check(answers, utils): ユーザー回答を検証する関数
-
-            - answers は { [input.id]: string } で渡る
-
-            - return 形式: { ok:boolean, message?:string }
-
-   2) 追加したら、左の Problems リストに自動で出ます。
-
-   3) ページ切替: 例) index.html?id=p2
-
-   -------------------------------------------------------------
-
-   utils: よく使う補助関数を同梱（数値パース、素数判定など）
-
+   - Problem metadata (including validation rules) lives in
+     scripts/problems.js which is shared with the Node backend.
+   - Each problem object defines: id, title, HTML statement,
+     inputs, explanation, and a server-side check function.
+   - Problems are grouped via window.PROBLEM_GROUPS for the UI.
+   - Example deep link: index.html?id=p2
    ============================================================= */
-
-
-
-const utils = {
-
-    parseNum: (v) => {
-
-        if (v === null || v === undefined || v === '') return NaN;
-
-        // 10進の整数/小数を許可。指数形式もNumberに委ねる
-
-        const n = Number(v);
-
-        return Number.isFinite(n) ? n : NaN;
-
-    },
-
-    isInt: (x) => Number.isInteger(x),
-
-    eqNum: (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < 1e-9,
-
-    gcd: (a,b) => { a=Math.abs(a); b=Math.abs(b); while(b){[a,b]=[b,a%b]} return a; },
-
-    isPrime: (n) => {
-
-        n = Math.floor(n);
-
-        if (n < 2) return false; if (n % 2 === 0) return n === 2; if (n % 3 === 0) return n === 3;
-
-        const r = Math.floor(Math.sqrt(n));
-
-        for (let f=5; f<=r; f+=6) { if (n%f===0 || n%(f+2)===0) return false; }
-
-        return true;
-
-    },
-
-    nthPrime: (k) => { let c=0,n=1; while(c<k){ n++; if(utils.isPrime(n)) c++; } return n; },
-
-    sumMultiplesBelow: (limit, a, b) => {
-
-        const sumOf = (m) => { const n = Math.floor((limit-1)/m); return m * n * (n+1) / 2; };
-
-        return sumOf(a) + sumOf(b) - sumOf(a*b/utils.gcd(a,b));
-
-    },
-
-    shuffle: (arr) => arr.sort(()=>Math.random()-0.5),
-
-};
-
-
-
 const PROBLEMS = Array.isArray(window.ALL_PROBLEMS) ? window.ALL_PROBLEMS : [];
 const PROBLEM_MAP = new Map(PROBLEMS.map((p) => [p.id, p]));
 
@@ -219,6 +141,8 @@ const shareLink = $('#shareLink');
 
 const actionsEl = document.querySelector('.actions');
 const footEl = document.querySelector('.foot');
+
+const CHECK_ENDPOINT = '/api/check';
 
 const boardPanel = $('#problemBoard');
 const boardForm = $('#problemBoardForm');
@@ -713,20 +637,49 @@ function renderProblem(p) {
     });
 
     // Submit handler
-    formEl.onsubmit = (ev) => {
+    formEl.onsubmit = async (ev) => {
         ev.preventDefault();
         statusEl.style.display = 'none';
+        statusEl.textContent = '';
         const answers = Object.fromEntries(new FormData(formEl).entries());
+        const submitBtn = actionsEl ? actionsEl.querySelector('button[type="submit"]') : null;
 
-        const { ok, message } = p.check(answers, utils) || { ok:false };
-        if (ok) {
-            storage.markSolved(p.id);
-            solvedMarkEl.textContent = 'Solved';
-            buildProblemList(p.id);
-            showStatus(message || 'Correct!', 'ok');
-        } else {
-            solvedMarkEl.textContent = storage.isSolved(p.id) ? 'Solved' : '';
-            showStatus(message || 'Incorrect. Try again!', 'bad');
+        if (submitBtn) submitBtn.disabled = true;
+        showStatus('サーバーで判定中です…', 'warn');
+
+        try {
+            const response = await fetch(CHECK_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ problemId: p.id, answers }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Unexpected response: ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const ok = !!payload.ok;
+            const message = typeof payload.message === 'string'
+                ? payload.message
+                : ok
+                    ? '正解です！'
+                    : '不正解でした。';
+
+            if (ok) {
+                storage.markSolved(p.id);
+                solvedMarkEl.textContent = 'Solved';
+                buildProblemList(p.id);
+                showStatus(message, 'ok');
+            } else {
+                solvedMarkEl.textContent = storage.isSolved(p.id) ? 'Solved' : '';
+                showStatus(message, 'bad');
+            }
+        } catch (error) {
+            console.error('Failed to verify answer', error);
+            showStatus('サーバーでの判定に失敗しました。時間をおいて再試行してください。', 'warn');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
         }
     };
 
