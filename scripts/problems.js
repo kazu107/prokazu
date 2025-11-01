@@ -61,11 +61,10 @@
         {
             id: 'p1',
             title: 'Multiples of 3 or 5 below 1000',
-            difficulty: 'Easy',
+            difficulty: 'easy',
             statement: `1000 未満の自然数のうち、<code>3</code> または <code>5</code> の倍数の総和を求めてください。<br />Enter the total sum (an integer).`,
             explanation: `
-                <p>3 の倍数と 5 の倍数をそれぞれ合計し、重複して数えた 15 の倍数を差し引けば包除原理によって答えが求められます。</p>
-                <p>等差数列の和は <code>m * n * (n + 1) / 2</code> で計算でき、ここで <code>n</code> は項数です。<code>n = floor((1000 - 1) / m)</code> として計算すると 233168 に到達します。</p>
+                eaeee
             `,
             inputs: [
                 { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 233168' },
@@ -87,7 +86,7 @@
         {
             id: 'p2',
             title: 'Find integers a, b (a + b = 10, ab = 21)',
-            difficulty: 'Easy',
+            difficulty: 'basic',
             statement: `整数 <em>a</em>, <em>b</em> が <code>a + b = 10</code>, <code>ab = 21</code> を満たすようにしてください。順序は問いません。`,
             explanation: `
                 <p><code>a + b = 10</code> と <code>ab = 21</code> を満たす整数は、2 次方程式 <code>x^2 - 10x + 21 = 0</code> の解として求まります。</p>
@@ -113,29 +112,25 @@
         },
         {
             id: 'p3',
-            title: 'Pythagorean triplet for which a + b + c = 1000',
+            title: 'Cubed triplet for which a^3 + b^3 + c^3 = 107',
             difficulty: 'Hard',
-            statement: `<em>a &lt; b &lt; c</em> を満たすピタゴラス数 <code>a^2 + b^2 = c^2</code> で、さらに <code>a + b + c = 1000</code> となる組 <code>(a, b, c)</code> を求め、3 つの値を入力してください（整数）。`,
+            statement: `<code>a^3 + b^3 + c^3 = 107</code> を満たす <code>(a, b, c)</code> を求め、3 つの値を入力してください（整数）。ただし、<code>-60 <= a, b, c <= 60</code>の範囲とする。`,
             explanation: `
-                <p>ピタゴラス数は Euclid の公式 <code>a = m^2 - n^2</code>, <code>b = 2mn</code>, <code>c = m^2 + n^2</code> (m &gt; n) で生成できます。</p>
-                <p><code>a + b + c = 1000</code> をこの公式に代入すると <code>2m(m + n) = 1000</code> となり、<code>(m, n) = (20, 5)</code> が条件を満たします。このとき <code>(a, b, c) = (200, 375, 425)</code> です。</p>
+                a
             `,
             inputs: [
-                { id: 'a', label: 'a', type: 'number', placeholder: 'e.g. 200' },
-                { id: 'b', label: 'b', type: 'number', placeholder: 'e.g. 375' },
-                { id: 'c', label: 'c', type: 'number', placeholder: 'e.g. 425' },
+                { id: 'a', label: 'a', type: 'number', placeholder: 'e.g. 1' },
+                { id: 'b', label: 'b', type: 'number', placeholder: 'e.g. 2' },
+                { id: 'c', label: 'c', type: 'number', placeholder: 'e.g. 3' },
             ],
             check: (answers) => {
                 const a = utils.parseNum(answers.a);
                 const b = utils.parseNum(answers.b);
                 const c = utils.parseNum(answers.c);
-                const ok = [a, b, c].every(Number.isFinite)
-                    && a < b && b < c
-                    && a + b + c === 1000
-                    && (a * a + b * b === c * c);
+                const ok = (a * a * a + b * b * b + c * c * c === 107);
                 return {
                     ok,
-                    message: ok ? '正解です！ (200, 375, 425) が条件を満たします。' : '三平方の定理と和が 1000 になる条件を再確認してください。',
+                    message: ok ? '正解です！' : (a === 1 && b === 2 && c === 3) ? '例をそのまま書かないで！' : '不正解です。',
                 };
             },
             hints: [
@@ -146,23 +141,21 @@
         },
         {
             id: 'p4',
-            title: 'The 10,001st prime',
-            difficulty: 'Medium',
-            statement: `10,001 番目の素数を求めてください。`,
+            title: 'The 107107th prime',
+            difficulty: 'hard',
+            statement: `107107 番目の素数を求めてください。`,
             explanation: `
-                <p>素数判定は平方根までの試し割りで十分です。また 6k ± 1 の形の整数だけを候補にすると効率的に探索できます。</p>
-                <p>この方法で素数を数えていくと 10,001 個目の素数は <code>104743</code> になります。</p>
+                s
             `,
             inputs: [
-                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 104743' },
+                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 57' },
             ],
             check: (answers) => {
                 const ans = utils.parseNum(answers.ans);
-                const correct = utils.nthPrime(10001);
-                const ok = utils.eqNum(ans, correct);
+                const ok = (ans === 1399709);
                 return {
                     ok,
-                    message: ok ? '正解です！' : '10,001 番目の素数をもう一度計算してみましょう。',
+                    message: ok ? '正解です！' : (ans === 57) ? '例をそのまま書かないで！' : (ans === 1399691) ? 'それは107106番目の素数です！' : (ans === 1399721) ? 'それは107108番目の素数です！' : '不正解です。',
                 };
             },
             hints: [
@@ -170,24 +163,58 @@
                 '6k ± 1 の形に絞って候補を列挙すると高速化できます。',
             ],
         },
+        {
+            id: 'p5',
+            title: 'Sum of the divisors of 107107107',
+            difficulty: 'medium',
+            statement: `107107107 の約数の総和を求めてください。例えば、6の約数は1, 2, 3, 6 で、その総和は12です。`,
+            explanation: `
+                s
+            `,
+            inputs: [
+                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 12' },
+            ],
+            check: (answers) => {
+                const ans = utils.parseNum(answers.ans);
+                const ok = (ans === 144144576);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                '1から順に割れるか試してみましょう。',
+                '整数Nがxで割り切れるなら、N/xも約数です。この性質を利用すれば高速化できます。',
+            ],
+        },
     ];
 
     const groups = [
         {
-            id: 'warmup',
-            title: 'ウォームアップ',
+            id: 'basic',
+            title: 'basic',
             defaultOpen: true,
-            problemIds: ['p1', 'p2'],
+            problemIds: ['p2'],
         },
         {
-            id: 'number-theory',
-            title: '数論チャレンジ',
-            problemIds: ['p1', 'p4'],
+            id: 'easy',
+            title: 'easy',
+            problemIds: ['p1'],
         },
         {
-            id: 'geometry',
-            title: '幾何とピタゴラス',
-            problemIds: ['p2', 'p3'],
+            id: 'medium',
+            title: 'medium',
+            problemIds: ['p3', 'p5'],
+        },
+        {
+            id: 'hard',
+            title: 'hard',
+            problemIds: ['p4'],
+        },
+        {
+            id: 'insane',
+            title: 'insane',
+            problemIds: [],
         },
         {
             id: 'all-set',
