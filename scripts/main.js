@@ -232,6 +232,10 @@ if (tabButtons.length) {
 
 
 const BOARD_MESSAGES = new Map();
+const boardState = {
+    requestId: 0,
+    disabledMessage: null,
+};
 let activeProblemId = null;
 let boardFeedbackTimer = null;
 
@@ -296,6 +300,10 @@ const renderBoardMessages = (problemId) => {
 
     const posts = BOARD_MESSAGES.get(problemId) || [];
     if (!posts.length) {
+        const placeholder = document.createElement('p');
+        placeholder.className = 'board-placeholder';
+        placeholder.textContent = 'まだ投稿がありません。';
+        boardMessagesEl.appendChild(placeholder);
         return;
     }
 
@@ -305,19 +313,19 @@ const renderBoardMessages = (problemId) => {
 
         const author = document.createElement('div');
         author.className = 'author';
-        author.textContent = post.name || '匿名';
+        author.textContent = post && typeof post.name === 'string' && post.name.trim() ? post.name : '匿名';
         wrapper.appendChild(author);
 
         const timestamp = document.createElement('div');
         timestamp.className = 'timestamp';
-        timestamp.textContent = formatBoardTimestamp(post.createdAt);
+        timestamp.textContent = formatBoardTimestamp(post && post.createdAt);
         if (timestamp.textContent) {
             wrapper.appendChild(timestamp);
         }
 
         const message = document.createElement('div');
         message.className = 'message';
-        message.textContent = post.message;
+        message.textContent = post && typeof post.message === 'string' ? post.message : '';
         wrapper.appendChild(message);
 
         boardMessagesEl.appendChild(wrapper);
@@ -326,10 +334,69 @@ const renderBoardMessages = (problemId) => {
     boardMessagesEl.lastElementChild?.scrollIntoView({ block: 'end' });
 };
 
-function handleBoardSubmit(event) {
+const boardApiPath = (problemId) => `/api/problems/${encodeURIComponent(problemId)}/board`;
+
+const loadBoardMessages = async (problemId) => {
+    if (!boardMessagesEl || !problemId) return;
+    boardState.requestId += 1;
+    const requestId = boardState.requestId;
+    const hasCached = BOARD_MESSAGES.has(problemId);
+    if (!hasCached) {
+        setBoardAvailability(true, '読み込み中...');
+    }
+    try {
+        const response = await fetch(boardApiPath(problemId), {
+            headers: { Accept: 'application/json' },
+        });
+        if (boardState.requestId !== requestId) return;
+
+        const rawText = await response.text();
+        let payload = null;
+        if (rawText) {
+            try {
+                payload = JSON.parse(rawText);
+            } catch (err) {
+                console.error('Failed to parse board messages payload', err);
+            }
+        }
+
+        if (response.status === 503) {
+            const message = payload && typeof payload.message === 'string'
+                ? payload.message
+                : '掲示板は現在利用できません。DATABASE_URL を設定してください。';
+            boardState.disabledMessage = message;
+            setBoardAvailability(false, boardState.disabledMessage);
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to load board messages (${response.status})`);
+        }
+
+        const messages = payload && Array.isArray(payload.messages) ? payload.messages : [];
+        BOARD_MESSAGES.set(problemId, messages);
+        renderBoardMessages(problemId);
+    } catch (error) {
+        if (boardState.requestId !== requestId) return;
+        console.error('Failed to load board messages', error);
+        const cached = BOARD_MESSAGES.get(problemId);
+        if (!cached || !cached.length) {
+            setBoardAvailability(true, '掲示板を読み込めませんでした。時間をおいて再試行してください。');
+        } else {
+            setBoardFeedback('掲示板の読み込みに失敗しました。時間をおいて再試行してください。', 'warn');
+        }
+    }
+};
+
+async function handleBoardSubmit(event) {
     event.preventDefault();
     if (!activeProblemId) {
         setBoardFeedback('Please select a problem before posting.', 'error');
+        return;
+    }
+
+    if (boardState.disabledMessage) {
+        setBoardFeedback(boardState.disabledMessage, 'error');
         return;
     }
 
@@ -342,24 +409,67 @@ function handleBoardSubmit(event) {
         return;
     }
 
-    const entry = {
-        id: Date.now(),
-        name: nameRaw || '匿名',
-        message: messageRaw,
-        createdAt: Date.now(),
-    };
-
-    const list = BOARD_MESSAGES.get(activeProblemId) || [];
-    list.push(entry);
-    BOARD_MESSAGES.set(activeProblemId, list);
-
-    if (boardMessageInput) {
-        boardMessageInput.value = '';
-        boardMessageInput.dispatchEvent(new Event('input'));
+    const submitBtn = boardForm?.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
     }
 
-    renderBoardMessages(activeProblemId);
-    setBoardFeedback('Posted your message.', 'success');
+    try {
+        const response = await fetch(boardApiPath(activeProblemId), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: nameRaw, message: messageRaw }),
+        });
+        const rawText = await response.text();
+        let payload = null;
+        if (rawText) {
+            try {
+                payload = JSON.parse(rawText);
+            } catch (err) {
+                console.error('Failed to parse board post response', err);
+            }
+        }
+
+        if (response.status === 503) {
+            const message = payload && typeof payload.message === 'string'
+                ? payload.message
+                : '掲示板は現在利用できません。DATABASE_URL を設定してください。';
+            boardState.disabledMessage = message;
+            setBoardAvailability(false, boardState.disabledMessage);
+            return;
+        }
+
+        if (!response.ok) {
+            const errorMsg = payload && typeof payload.message === 'string'
+                ? payload.message
+                : 'メッセージを投稿できませんでした。時間をおいて再試行してください。';
+            setBoardFeedback(errorMsg, 'error');
+            return;
+        }
+
+        const savedMessage = payload && payload.message;
+        if (savedMessage) {
+            const list = BOARD_MESSAGES.get(activeProblemId) || [];
+            list.push(savedMessage);
+            BOARD_MESSAGES.set(activeProblemId, list);
+            renderBoardMessages(activeProblemId);
+        } else {
+            await loadBoardMessages(activeProblemId);
+        }
+
+        if (boardMessageInput) {
+            boardMessageInput.value = '';
+            boardMessageInput.dispatchEvent(new Event('input'));
+        }
+        setBoardFeedback('投稿しました。', 'success');
+    } catch (error) {
+        console.error('Failed to post board message', error);
+        setBoardFeedback('メッセージの投稿に失敗しました。時間をおいて再試行してください。', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
 }
 
 if (boardForm) {
@@ -548,12 +658,21 @@ function renderProblem(p) {
             : EXPLANATION_PLACEHOLDER_HTML;
     }
     if (boardPanel) {
-        setBoardAvailability(true);
-        renderBoardMessages(p.id);
         setBoardFeedback('');
         if (boardMessageInput) {
             boardMessageInput.value = '';
             boardMessageInput.dispatchEvent(new Event('input'));
+        }
+        if (BOARD_MESSAGES.has(p.id)) {
+            renderBoardMessages(p.id);
+        } else if (boardMessagesEl) {
+            boardMessagesEl.innerHTML = '';
+        }
+        if (boardState.disabledMessage) {
+            setBoardAvailability(false, boardState.disabledMessage);
+        } else {
+            setBoardAvailability(true);
+            loadBoardMessages(p.id);
         }
     }
     showProblemTab('statement');
