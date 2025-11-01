@@ -83,7 +83,10 @@ main.container {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+.list::-webkit-scrollbar { display: none; }
 .list details.group {
     border: 1px solid #1d2835;
     border-radius: 12px;
@@ -302,7 +305,10 @@ main.container {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+.board-messages::-webkit-scrollbar { display: none; }
 .board-messages:empty::before {
     content: 'No posts yet. Be the first to leave a message.';
     color: var(--text-dim);
