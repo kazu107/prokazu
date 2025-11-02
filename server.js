@@ -3,15 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
-const { problems, utils } = require('./scripts/problems.js');
+const { problems, utils, battleProblems } = require('./scripts/problems.js');
 const { Pool } = require('pg');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 const STATIC_ROOT = path.join(__dirname);
-
-const dotenv = require("dotenv");
-dotenv.config();
 
 const MIME_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -26,7 +23,7 @@ const MIME_TYPES = {
 };
 
 const PROBLEM_MAP = new Map(problems.map((problem) => [problem.id, problem]));
-const DATABASE_URL = process.env.DATABASE_URL
+const DATABASE_URL = process.env.DATABASE_URL;
 const BOARD_NAME_MAX_LENGTH = 80;
 const BOARD_MESSAGE_MAX_LENGTH = 4000;
 const BOARD_MESSAGE_LIMIT = 200;
@@ -163,6 +160,858 @@ function readJsonBody(req, limit = 1024 * 128) {
         req.on('error', onError);
         req.on('aborted', onAborted);
     });
+}
+
+const BATTLE_PROBLEMS = Array.isArray(battleProblems)
+    ? battleProblems.filter((problem) => problem && typeof problem.check === 'function')
+    : [];
+const BATTLE_GAMES = new Map();
+const BATTLE_PLAYER_NAME_MAX = 24;
+const BATTLE_MAX_PLAYERS = 24;
+const BATTLE_MIN_ROUNDS = 1;
+const BATTLE_MAX_ROUNDS = 20;
+const BATTLE_MIN_ROUND_TIME = 10;
+const BATTLE_MAX_ROUND_TIME = 600;
+const BATTLE_MAX_PLACEMENTS = 8;
+const BATTLE_GAME_TTL_MS = 1000 * 60 * 60 * 6;
+const BATTLE_ROUND_DELAY_MS = 3000;
+const BATTLE_DEFAULT_CONFIG = Object.freeze({
+    rounds: 5,
+    roundTimeSeconds: 60,
+    placementPoints: [5, 3, 1],
+    penalty: 1,
+});
+
+function nowMs() {
+    return Date.now();
+}
+
+function randomToken(prefix) {
+    return `${prefix}-${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function generateBattleId() {
+    let id = '';
+    while (id.length < 6) {
+        id += Math.random().toString(36).slice(2).toUpperCase();
+    }
+    id = id.slice(0, 6);
+    if (BATTLE_GAMES.has(id)) {
+        return generateBattleId();
+    }
+    return id;
+}
+
+function sanitizePlayerName(raw, fallback) {
+    const trimmed = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim() : '';
+    const safe = trimmed ? trimmed.slice(0, BATTLE_PLAYER_NAME_MAX) : '';
+    if (safe) return safe;
+    return fallback;
+}
+
+function cloneInputs(inputs) {
+    if (!Array.isArray(inputs)) return [];
+    return inputs.map((inp) => ({ ...inp }));
+}
+
+function sanitizeBattleProblem(problem) {
+    return {
+        id: problem.id,
+        baseId: problem.baseId || null,
+        title: problem.title,
+        statement: problem.statement,
+        inputs: cloneInputs(problem.inputs),
+        difficulty: problem.difficulty || null,
+    };
+}
+
+function createBattleGame(id) {
+    const now = nowMs();
+    return {
+        id,
+        createdAt: now,
+        updatedAt: now,
+        state: 'waiting',
+        hostToken: null,
+        config: null,
+        players: new Map(),
+        nextPlayerIndex: 1,
+        usedProblemIds: new Set(),
+        round: null,
+        history: [],
+        timers: {
+            round: null,
+            advance: null,
+        },
+        finishedAt: null,
+    };
+}
+
+function stopBattleTimer(game, key) {
+    if (game.timers && game.timers[key]) {
+        clearTimeout(game.timers[key]);
+        game.timers[key] = null;
+    }
+}
+
+function clearBattleTimers(game) {
+    stopBattleTimer(game, 'round');
+    stopBattleTimer(game, 'advance');
+}
+
+function cleanupBattleGames() {
+    const now = nowMs();
+    for (const [id, game] of BATTLE_GAMES) {
+        const inactiveMs = now - game.updatedAt;
+        if (!game.players.size && inactiveMs > 30 * 60 * 1000) {
+            clearBattleTimers(game);
+            BATTLE_GAMES.delete(id);
+            continue;
+        }
+        if (inactiveMs > BATTLE_GAME_TTL_MS) {
+            clearBattleTimers(game);
+            BATTLE_GAMES.delete(id);
+        }
+    }
+}
+
+function findQuickJoinRoom() {
+    let candidate = null;
+    for (const game of BATTLE_GAMES.values()) {
+        if (game.state !== 'waiting') continue;
+        if (!game.players.size) continue;
+        if (game.players.size >= BATTLE_MAX_PLAYERS) continue;
+        if (!candidate || game.createdAt < candidate.createdAt) {
+            candidate = game;
+        }
+    }
+    return candidate;
+}
+
+function pickBattleProblem(game) {
+    if (!BATTLE_PROBLEMS.length) return null;
+    const available = BATTLE_PROBLEMS.filter((problem) => !game.usedProblemIds.has(problem.id));
+    const pool = available.length ? available : BATTLE_PROBLEMS;
+    if (!available.length) {
+        game.usedProblemIds.clear();
+    }
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    game.usedProblemIds.add(chosen.id);
+    return chosen;
+}
+
+function getBattlePlayerByToken(game, token) {
+    if (!token) return null;
+    return game.players.get(token) || null;
+}
+
+function removeBattlePlayer(game, token) {
+    const player = game.players.get(token);
+    if (!player) return false;
+    game.players.delete(token);
+    if (token === game.hostToken) {
+        const nextHost = Array.from(game.players.values())
+            .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))[0];
+        game.hostToken = nextHost ? nextHost.token : null;
+    }
+    if (!game.players.size) {
+        clearBattleTimers(game);
+    }
+    game.updatedAt = nowMs();
+    return true;
+}
+
+function getLeaderboard(game) {
+    return Array.from(game.players.values()).sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return (a.joinedAt || 0) - (b.joinedAt || 0);
+    });
+}
+
+function parsePlacementPoints(raw) {
+    if (Array.isArray(raw)) {
+        return raw
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0)
+            .map((value) => Math.min(Math.round(value), 100))
+            .slice(0, BATTLE_MAX_PLACEMENTS);
+    }
+    if (typeof raw === 'string') {
+        return raw
+            .split(/[, \t\r\n]+/)
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0)
+            .map((value) => Math.min(Math.round(value), 100))
+            .slice(0, BATTLE_MAX_PLACEMENTS);
+    }
+    return [];
+}
+
+function normalizeBattleConfig(input) {
+    if (!input || typeof input !== 'object') {
+        return { ok: false, message: 'Invalid configuration payload.' };
+    }
+    const roundsRaw = Number.isFinite(Number(input.rounds))
+        ? Number(input.rounds)
+        : Number.isFinite(Number(input.roundCount)) ? Number(input.roundCount) : NaN;
+    const roundTimeRaw = Number.isFinite(Number(input.roundTimeSeconds))
+        ? Number(input.roundTimeSeconds)
+        : Number.isFinite(Number(input.roundTime)) ? Number(input.roundTime) : NaN;
+    const penaltyRaw = Number.isFinite(Number(input.penalty))
+        ? Number(input.penalty)
+        : Number.isFinite(Number(input.wrongPenalty)) ? Number(input.wrongPenalty) : NaN;
+    const placementPoints = parsePlacementPoints(
+        input.placementPoints !== undefined ? input.placementPoints : input.scoring || input.pointsPerRank,
+    );
+
+    const rounds = Number.isFinite(roundsRaw)
+        ? Math.min(Math.max(Math.floor(roundsRaw), BATTLE_MIN_ROUNDS), BATTLE_MAX_ROUNDS)
+        : BATTLE_DEFAULT_CONFIG.rounds;
+    const roundTimeSeconds = Number.isFinite(roundTimeRaw)
+        ? Math.min(Math.max(Math.floor(roundTimeRaw), BATTLE_MIN_ROUND_TIME), BATTLE_MAX_ROUND_TIME)
+        : BATTLE_DEFAULT_CONFIG.roundTimeSeconds;
+    let penalty = Number.isFinite(penaltyRaw)
+        ? Math.min(Math.max(Math.round(Math.abs(penaltyRaw)), 0), 50)
+        : BATTLE_DEFAULT_CONFIG.penalty;
+    let points = placementPoints;
+    if (!points.length) {
+        points = [...BATTLE_DEFAULT_CONFIG.placementPoints];
+    }
+
+    return {
+        ok: true,
+        config: {
+            rounds,
+            roundTimeSeconds,
+            placementPoints: points,
+            penalty,
+        },
+    };
+}
+
+function serializeBattleRound(game, viewerToken) {
+    const round = game.round;
+    if (!round) return null;
+    const now = nowMs();
+    const timeRemaining = round.status === 'active'
+        ? Math.max(0, Math.ceil((round.endsAt - now) / 1000))
+        : 0;
+    const myAttempts = viewerToken
+        ? round.attempts
+            .filter((attempt) => attempt.playerToken === viewerToken)
+            .map((attempt) => ({
+                submittedAt: attempt.submittedAt,
+                correct: Boolean(attempt.correct),
+                placement: attempt.placement || null,
+                awarded: attempt.awarded || 0,
+                penalty: attempt.penalty || 0,
+            }))
+        : [];
+    return {
+        index: round.index,
+        status: round.status,
+        startedAt: round.startedAt,
+        endsAt: round.endsAt,
+        timeRemaining,
+        maxAwards: game.config ? game.config.placementPoints.length : 0,
+        awardsTaken: round.correct.length,
+        problem: round.problemPublic,
+        correct: round.correct.map((entry) => ({
+            playerId: entry.playerId,
+            name: entry.name,
+            placement: entry.placement,
+            awarded: entry.awarded,
+            answeredAt: entry.answeredAt,
+            timeTakenMs: entry.timeTakenMs,
+        })),
+        myAttempts,
+        finishReason: round.finishReason || null,
+        nextStartAt: round.nextStartAt || null,
+    };
+}
+
+function serializeGameForPlayer(game, viewerToken) {
+    const now = nowMs();
+    const me = viewerToken ? game.players.get(viewerToken) : null;
+    if (me) {
+        me.lastSeenAt = now;
+    }
+    game.updatedAt = now;
+
+    const leaderboard = getLeaderboard(game);
+    const hostPlayer = game.hostToken ? game.players.get(game.hostToken) : null;
+    return {
+        id: game.id,
+        state: game.state,
+        createdAt: game.createdAt,
+        updatedAt: game.updatedAt,
+        config: game.config ? {
+            rounds: game.config.rounds,
+            roundTimeSeconds: game.config.roundTimeSeconds,
+            placementPoints: [...game.config.placementPoints],
+            penalty: game.config.penalty,
+        } : null,
+        defaultConfig: { ...BATTLE_DEFAULT_CONFIG },
+        players: leaderboard.map((player) => ({
+            id: player.id,
+            name: player.name,
+            score: player.score,
+            isHost: player.token === game.hostToken,
+            joinedAt: player.joinedAt,
+        })),
+        me: me ? {
+            id: me.id,
+            name: me.name,
+            score: me.score,
+            isHost: me.token === game.hostToken,
+        } : null,
+        hostPlayerId: hostPlayer ? hostPlayer.id : null,
+        round: serializeBattleRound(game, viewerToken),
+        history: game.history.slice(-10),
+        totals: {
+            roundsCompleted: game.history.length,
+            roundsPlanned: game.config ? game.config.rounds : 0,
+        },
+        results: game.state === 'results'
+            ? leaderboard.map((player, index) => ({
+                rank: index + 1,
+                id: player.id,
+                name: player.name,
+                score: player.score,
+            }))
+            : null,
+        settingsLocked: game.state === 'active',
+        battleProblemCount: BATTLE_PROBLEMS.length,
+    };
+}
+
+function beginBattleRound(game) {
+    stopBattleTimer(game, 'advance');
+    if (!game.config) {
+        return false;
+    }
+    if (!BATTLE_PROBLEMS.length) {
+        game.state = 'results';
+        game.finishedAt = nowMs();
+        game.round = null;
+        return false;
+    }
+    if (game.history.length >= game.config.rounds) {
+        game.state = 'results';
+        game.finishedAt = nowMs();
+        game.round = null;
+        return false;
+    }
+    const problem = pickBattleProblem(game);
+    if (!problem) {
+        game.state = 'results';
+        game.finishedAt = nowMs();
+        game.round = null;
+        return false;
+    }
+    const now = nowMs();
+    const round = {
+        index: game.history.length + 1,
+        status: 'active',
+        startedAt: now,
+        endsAt: now + game.config.roundTimeSeconds * 1000,
+        problemId: problem.id,
+        problemData: problem,
+        problemPublic: sanitizeBattleProblem(problem),
+        attempts: [],
+        correct: [],
+        finishReason: null,
+        nextStartAt: null,
+    };
+    game.round = round;
+    game.state = 'active';
+    game.updatedAt = now;
+
+    stopBattleTimer(game, 'round');
+    game.timers.round = setTimeout(() => {
+        finishBattleRound(game, 'time');
+    }, game.config.roundTimeSeconds * 1000);
+    return true;
+}
+
+function finishBattleRound(game, reason) {
+    const round = game.round;
+    if (!round || round.status !== 'active') return;
+
+    round.status = 'finished';
+    round.finishReason = reason || null;
+    round.finishedAt = nowMs();
+    stopBattleTimer(game, 'round');
+
+    const summary = {
+        index: round.index,
+        problemId: round.problemId,
+        title: round.problemPublic.title,
+        winners: round.correct.map((entry) => ({
+            playerId: entry.playerId,
+            name: entry.name,
+            placement: entry.placement,
+            awarded: entry.awarded,
+            timeTakenMs: entry.timeTakenMs,
+        })),
+        startedAt: round.startedAt,
+        finishedAt: round.finishedAt,
+        reason: round.finishReason,
+    };
+    game.history.push(summary);
+    game.updatedAt = round.finishedAt;
+
+    if (!game.config || game.history.length >= game.config.rounds) {
+        game.state = 'results';
+        game.finishedAt = round.finishedAt;
+        round.nextStartAt = null;
+        stopBattleTimer(game, 'advance');
+        return;
+    }
+
+    round.nextStartAt = round.finishedAt + BATTLE_ROUND_DELAY_MS;
+    stopBattleTimer(game, 'advance');
+    game.timers.advance = setTimeout(() => {
+        beginBattleRound(game);
+    }, BATTLE_ROUND_DELAY_MS);
+}
+
+function attemptBattleAnswer(game, player, answers) {
+    const round = game.round;
+    if (!round || round.status !== 'active') {
+        return { ok: false, message: 'Round is not active.' };
+    }
+    const now = nowMs();
+    const limit = Math.max(1, game.config ? game.config.placementPoints.length : 1);
+
+    const alreadySolved = round.correct.find((entry) => entry.playerId === player.id);
+    if (alreadySolved) {
+        return {
+            ok: true,
+            correct: true,
+            alreadySolved: true,
+            placement: alreadySolved.placement,
+            awarded: 0,
+            score: player.score,
+        };
+    }
+
+    let isCorrect = false;
+    try {
+        const evaluation = round.problemData.check(
+            typeof answers === 'object' && answers !== null ? answers : {},
+            utils,
+        ) || {};
+        isCorrect = Boolean(evaluation.ok);
+    } catch (error) {
+        console.error('Failed to evaluate battle answer', error);
+    }
+
+    const attemptRecord = {
+        playerToken: player.token,
+        playerId: player.id,
+        submittedAt: now,
+        correct: isCorrect,
+    };
+    round.attempts.push(attemptRecord);
+
+    player.lastSeenAt = now;
+    game.updatedAt = now;
+
+    if (isCorrect) {
+        const placementIndex = round.correct.length;
+        if (placementIndex >= limit) {
+            return {
+                ok: false,
+                message: 'Round already resolved.',
+                correct: false,
+                score: player.score,
+            };
+        }
+
+        const placement = placementIndex + 1;
+        const awarded = placementIndex < game.config.placementPoints.length
+            ? game.config.placementPoints[placementIndex]
+            : 0;
+        if (awarded > 0) {
+            player.score += awarded;
+        }
+        player.stats = player.stats || { correct: 0, incorrect: 0 };
+        player.stats.correct += 1;
+
+        const correctEntry = {
+            playerId: player.id,
+            name: player.name,
+            placement,
+            awarded,
+            answeredAt: now,
+            timeTakenMs: now - round.startedAt,
+        };
+        round.correct.push(correctEntry);
+
+        attemptRecord.placement = placement;
+        attemptRecord.awarded = awarded;
+
+        if (round.correct.length >= limit) {
+            finishBattleRound(game, 'max_correct');
+        }
+
+        return {
+            ok: true,
+            correct: true,
+            placement,
+            awarded,
+            score: player.score,
+        };
+    }
+
+    const penalty = Math.max(0, Number(game.config ? game.config.penalty : 0));
+    let appliedPenalty = 0;
+    if (penalty > 0) {
+        player.score -= penalty;
+        appliedPenalty = penalty;
+        attemptRecord.penalty = penalty;
+    }
+    player.stats = player.stats || { correct: 0, incorrect: 0 };
+    player.stats.incorrect += 1;
+
+    return {
+        ok: true,
+        correct: false,
+        penaltyApplied: appliedPenalty > 0,
+        penalty: appliedPenalty,
+        score: player.score,
+    };
+}
+
+async function handleBattleJoinRequest(req, res) {
+    try {
+        const payload = await readJsonBody(req);
+        cleanupBattleGames();
+
+        let { roomId, name, playerName, token: existingToken, playerToken } = payload || {};
+        let desiredId = typeof roomId === 'string' ? roomId.trim().toUpperCase() : '';
+        if (desiredId && !/^[A-Z0-9-]{4,12}$/.test(desiredId)) {
+            sendJson(res, 400, { ok: false, message: 'Room ID must be 4-12 alphanumeric characters.' });
+            return;
+        }
+        if (!desiredId) {
+            desiredId = generateBattleId();
+        }
+
+        let game = BATTLE_GAMES.get(desiredId);
+        if (!game) {
+            game = createBattleGame(desiredId);
+            BATTLE_GAMES.set(desiredId, game);
+        }
+
+        const now = nowMs();
+        const reconnectToken = typeof (playerToken || existingToken) === 'string'
+            ? (playerToken || existingToken).trim()
+            : '';
+
+        if (reconnectToken) {
+            const existing = getBattlePlayerByToken(game, reconnectToken);
+            if (existing) {
+                existing.name = sanitizePlayerName(name || playerName, existing.name);
+                existing.lastSeenAt = now;
+                const gameState = serializeGameForPlayer(game, existing.token);
+                sendJson(res, 200, {
+                    ok: true,
+                    roomId: game.id,
+                    playerToken: existing.token,
+                    game: gameState,
+                    rejoined: true,
+                });
+                return;
+            }
+        }
+
+        if (game.players.size >= BATTLE_MAX_PLAYERS) {
+            sendJson(res, 403, { ok: false, message: 'This room is full.' });
+            return;
+        }
+
+        const token = randomToken('player');
+        const playerIndex = game.nextPlayerIndex || 1;
+        game.nextPlayerIndex = playerIndex + 1;
+        const fallbackName = `Player ${playerIndex}`;
+        const player = {
+            id: `P${String(playerIndex).padStart(2, '0')}`,
+            token,
+            name: sanitizePlayerName(name || playerName, fallbackName),
+            score: 0,
+            joinedAt: now,
+            lastSeenAt: now,
+            stats: { correct: 0, incorrect: 0 },
+        };
+
+        if (!game.hostToken) {
+            game.hostToken = token;
+        }
+
+        game.players.set(token, player);
+        game.updatedAt = now;
+
+        const gameState = serializeGameForPlayer(game, token);
+        sendJson(res, 200, {
+            ok: true,
+            roomId: game.id,
+            playerToken: token,
+            game: gameState,
+            rejoined: false,
+        });
+    } catch (error) {
+        console.error('Failed to process battle join request', error);
+        sendJson(res, 500, { ok: false, message: 'Failed to join battle room.' });
+    }
+}
+
+async function handleBattleConfigRequest(req, res, roomId) {
+    const game = BATTLE_GAMES.get(roomId);
+    if (!game) {
+        sendJson(res, 404, { ok: false, message: 'Room not found.' });
+        return;
+    }
+    try {
+        const payload = await readJsonBody(req);
+        const token = typeof payload.token === 'string' ? payload.token.trim() : '';
+        if (!token) {
+            sendJson(res, 401, { ok: false, message: 'Missing player token.' });
+            return;
+        }
+        if (token !== game.hostToken) {
+            sendJson(res, 403, { ok: false, message: 'Only the host can update settings.' });
+            return;
+        }
+
+        const { ok, config, message } = normalizeBattleConfig(payload.config || payload);
+        if (!ok) {
+            sendJson(res, 400, { ok: false, message: message || 'Invalid configuration.' });
+            return;
+        }
+
+        game.config = config;
+        game.updatedAt = nowMs();
+
+        const state = serializeGameForPlayer(game, token);
+        sendJson(res, 200, { ok: true, config, game: state });
+    } catch (error) {
+        console.error('Failed to update battle configuration', error);
+        sendJson(res, 500, { ok: false, message: 'Failed to update configuration.' });
+    }
+}
+
+async function handleBattleStartRequest(req, res, roomId) {
+    const game = BATTLE_GAMES.get(roomId);
+    if (!game) {
+        sendJson(res, 404, { ok: false, message: 'Room not found.' });
+        return;
+    }
+
+    try {
+        const payload = await readJsonBody(req);
+        const token = typeof payload.token === 'string' ? payload.token.trim() : '';
+        if (!token) {
+            sendJson(res, 401, { ok: false, message: 'Missing player token.' });
+            return;
+        }
+        if (token !== game.hostToken) {
+            sendJson(res, 403, { ok: false, message: 'Only the host can start the game.' });
+            return;
+        }
+        if (!game.players.size) {
+            sendJson(res, 400, { ok: false, message: 'At least one player is required to start.' });
+            return;
+        }
+        if (game.state === 'active') {
+            sendJson(res, 409, { ok: false, message: 'Game already started.' });
+            return;
+        }
+        if (!game.config) {
+            game.config = { ...BATTLE_DEFAULT_CONFIG };
+        }
+
+        game.history = [];
+        game.usedProblemIds.clear();
+        game.finishedAt = null;
+        for (const player of game.players.values()) {
+            player.score = 0;
+            player.stats = { correct: 0, incorrect: 0 };
+        }
+        game.state = 'waiting';
+        game.round = null;
+
+        const started = beginBattleRound(game);
+        if (!started) {
+            sendJson(res, 500, { ok: false, message: 'Failed to start the first round.' });
+            return;
+        }
+
+        const state = serializeGameForPlayer(game, token);
+        sendJson(res, 200, { ok: true, game: state });
+    } catch (error) {
+        console.error('Failed to start battle game', error);
+        sendJson(res, 500, { ok: false, message: 'Failed to start game.' });
+    }
+}
+
+async function handleBattleAnswerRequest(req, res, roomId) {
+    const game = BATTLE_GAMES.get(roomId);
+    if (!game) {
+        sendJson(res, 404, { ok: false, message: 'Room not found.' });
+        return;
+    }
+    try {
+        const payload = await readJsonBody(req);
+        const token = typeof payload.token === 'string' ? payload.token.trim() : '';
+        if (!token) {
+            sendJson(res, 401, { ok: false, message: 'Missing player token.' });
+            return;
+        }
+        const player = getBattlePlayerByToken(game, token);
+        if (!player) {
+            sendJson(res, 404, { ok: false, message: 'Player not found in this room.' });
+            return;
+        }
+        if (game.state !== 'active') {
+            sendJson(res, 409, { ok: false, message: 'Game is not active.' });
+            return;
+        }
+        if (!game.round || game.round.status !== 'active') {
+            sendJson(res, 409, { ok: false, message: 'Round is not active.' });
+            return;
+        }
+
+        const result = attemptBattleAnswer(game, player, payload.answers || payload.answer || {});
+        const state = serializeGameForPlayer(game, token);
+        sendJson(res, 200, { ...result, game: state });
+    } catch (error) {
+        console.error('Failed to process battle answer', error);
+        sendJson(res, 500, { ok: false, message: 'Failed to submit answer.' });
+    }
+}
+
+async function handleBattleLeaveRequest(req, res, roomId) {
+    const game = BATTLE_GAMES.get(roomId);
+    if (!game) {
+        sendJson(res, 404, { ok: false, message: 'Room not found.' });
+        return;
+    }
+    try {
+        const payload = await readJsonBody(req);
+        const token = typeof payload.token === 'string' ? payload.token.trim() : '';
+        if (!token) {
+            sendJson(res, 400, { ok: false, message: 'Missing player token.' });
+            return;
+        }
+        removeBattlePlayer(game, token);
+        const state = serializeGameForPlayer(game, null);
+        sendJson(res, 200, { ok: true, game: state });
+    } catch (error) {
+        console.error('Failed to process battle leave', error);
+        sendJson(res, 500, { ok: false, message: 'Failed to leave room.' });
+    }
+}
+
+function handleBattleStateRequest(req, res, roomId, parsedUrl) {
+    const game = BATTLE_GAMES.get(roomId);
+    if (!game) {
+        sendJson(res, 404, { ok: false, message: 'Room not found.' });
+        return;
+    }
+    const token = parsedUrl.searchParams.get('token') || '';
+    const state = serializeGameForPlayer(game, token.trim() || null);
+    sendJson(res, 200, { ok: true, roomId: game.id, game: state });
+}
+
+function handleBattleApi(req, res, segments, parsedUrl) {
+    cleanupBattleGames();
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+        });
+        res.end();
+        return;
+    }
+
+    if (segments.length === 2 && segments[0] === 'rooms' && segments[1] === 'join') {
+        if (req.method !== 'POST') {
+            sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+            return;
+        }
+        handleBattleJoinRequest(req, res);
+        return;
+    }
+
+    if (segments.length === 2 && segments[0] === 'rooms' && segments[1] === 'quick') {
+        if (req.method !== 'POST') {
+            sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+            return;
+        }
+        const available = findQuickJoinRoom();
+        if (!available) {
+            sendJson(res, 404, { ok: false, message: 'No available rooms.' });
+            return;
+        }
+        sendJson(res, 200, {
+            ok: true,
+            roomId: available.id,
+            playerCount: available.players.size,
+        });
+        return;
+    }
+
+    if (segments.length >= 2 && segments[0] === 'rooms') {
+        const roomId = (segments[1] || '').trim().toUpperCase();
+        const action = segments[2] || 'state';
+
+        if (action === 'state' || (action === '' && req.method === 'GET')) {
+            if (req.method !== 'GET') {
+                sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+                return;
+            }
+            handleBattleStateRequest(req, res, roomId, parsedUrl);
+            return;
+        }
+        if (action === 'config') {
+            if (req.method !== 'POST') {
+                sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+                return;
+            }
+            handleBattleConfigRequest(req, res, roomId);
+            return;
+        }
+        if (action === 'start') {
+            if (req.method !== 'POST') {
+                sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+                return;
+            }
+            handleBattleStartRequest(req, res, roomId);
+            return;
+        }
+        if (action === 'answer') {
+            if (req.method !== 'POST') {
+                sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+                return;
+            }
+            handleBattleAnswerRequest(req, res, roomId);
+            return;
+        }
+        if (action === 'leave') {
+            if (req.method !== 'POST') {
+                sendJson(res, 405, { ok: false, message: 'Method Not Allowed' });
+                return;
+            }
+            handleBattleLeaveRequest(req, res, roomId);
+            return;
+        }
+    }
+
+    sendJson(res, 404, { ok: false, message: 'Not Found' });
 }
 
 function handleCheck(req, res) {
@@ -357,6 +1206,11 @@ function serveStatic(req, res, parsedUrl) {
 const server = http.createServer((req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
     const segments = parsedUrl.pathname.split('/').filter(Boolean);
+
+    if (segments.length >= 2 && segments[0] === 'api' && segments[1] === 'battle') {
+        handleBattleApi(req, res, segments.slice(2), parsedUrl);
+        return;
+    }
 
     if (segments.length === 4 && segments[0] === 'api' && segments[1] === 'problems' && segments[3] === 'board') {
         handleBoardRoute(req, res, segments[2]);

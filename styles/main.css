@@ -454,3 +454,179 @@ details.hint summary {
     height: 18px;
     fill: currentColor;
 }
+
+.battle-panel .pad {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.battle-lobby,
+.battle-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.battle-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.battle-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.battle-timer {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--accent);
+}
+.battle-answer-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.battle-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.battle-summary {
+    margin-top: 8px;
+}
+.battle-round-summary,
+.battle-results {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(10, 16, 22, 0.6);
+}
+.battle-results table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+.battle-results th,
+.battle-results td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(37, 50, 67, .6);
+}
+.battle-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.battle-room-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.battle-scoreboard {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(12, 18, 25, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.battle-scoreboard th,
+.battle-scoreboard td {
+    padding: 8px 10px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(37, 50, 67, .6);
+}
+.battle-scoreboard tbody tr:last-child td {
+    border-bottom: none;
+}
+.battle-cell-rank {
+    width: 40px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.battle-row-me {
+    background: rgba(125, 196, 255, 0.08);
+}
+.battle-placeholder {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+.battle-history {
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+}
+.battle-history-winners {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+.battle-join-form,
+.battle-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.battle-join-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.battle-join-actions button[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.battle-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.battle-help-text {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+.battle-config-readonly {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+}
+.battle-note {
+    font-size: 12px;
+    color: var(--accent);
+}
+.battle-join-button {
+    align-self: flex-start;
+}
+.battle-join-form input,
+.battle-config-form input {
+    width: 100%;
+}
+.battle-input-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+}
+.battle-input-row input,
+.battle-input-row textarea {
+    min-width: 0;
+}
+.battle-statement {
+    min-height: 120px;
+}
+.ghost.small {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+.ghost.small.danger {
+    border-color: rgba(255, 107, 107, .45);
+    color: #ff9b9b;
+}

@@ -1,12 +1,15 @@
+/* eslint-disable max-len */
 (function (globalScope, factory) {
     const data = factory();
     if (typeof module === 'object' && module.exports) {
         module.exports = data;
     } else if (globalScope) {
-        const { problems, groups } = data;
+        const { problems, groups, battleProblems } = data;
         const publicProblems = problems.map(({ check, ...rest }) => ({ ...rest }));
+        const publicBattleProblems = battleProblems.map(({ check, ...rest }) => ({ ...rest }));
         globalScope.ALL_PROBLEMS = publicProblems;
         globalScope.PROBLEM_GROUPS = groups;
+        globalScope.BATTLE_PROBLEMS = publicBattleProblems;
     }
 }(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : this, () => {
     const utils = {
@@ -223,5 +226,17 @@
         },
     ];
 
-    return { utils, problems, groups };
+    const battleProblems = problems.map((problem) => ({
+        id: `battle-${problem.id}`,
+        baseId: problem.id,
+        title: problem.title,
+        statement: problem.statement,
+        inputs: Array.isArray(problem.inputs)
+            ? problem.inputs.map((inp) => ({ ...inp }))
+            : [],
+        check: problem.check,
+        difficulty: problem.difficulty,
+    }));
+
+    return { utils, problems, groups, battleProblems };
 }));

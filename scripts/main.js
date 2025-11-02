@@ -238,6 +238,7 @@ const boardState = {
 };
 let activeProblemId = null;
 let boardFeedbackTimer = null;
+let statusHideTimer = null;
 
 const setBoardFeedback = (message, tone) => {
     if (!boardFeedbackEl) return;
@@ -627,6 +628,32 @@ function renderProblemNotFound(id) {
 }
 
 function renderProblem(p) {
+    const wasSameProblem = activeProblemId === p.id;
+    let preservedValues = null;
+    let preservedActiveId = null;
+    let preservedSelection = null;
+
+    if (wasSameProblem && formEl) {
+        preservedValues = {};
+        const elements = Array.from(formEl.elements || []);
+        elements.forEach((el) => {
+            if (!el) return;
+            const key = el.name || el.id;
+            if (!key) return;
+            preservedValues[key] = el.value;
+        });
+        const activeEl = document.activeElement;
+        if (activeEl && formEl.contains(activeEl) && activeEl.id) {
+            preservedActiveId = activeEl.id;
+            if (typeof activeEl.selectionStart === 'number' && typeof activeEl.selectionEnd === 'number') {
+                preservedSelection = {
+                    start: activeEl.selectionStart,
+                    end: activeEl.selectionEnd,
+                };
+            }
+        }
+    }
+
     activeProblemId = p.id;
 
     idBadge.textContent = `ID: ${p.id}`;
@@ -744,7 +771,24 @@ function renderProblem(p) {
 
         field.name = inp.id;
         field.id = inp.id;
-        field.placeholder = inp.placeholder || '';
+        if (Object.prototype.hasOwnProperty.call(inp, 'placeholder')) {
+            field.placeholder = inp.placeholder;
+        }
+        if (Object.prototype.hasOwnProperty.call(inp, 'value')) {
+            field.value = inp.value;
+        }
+        if (Object.prototype.hasOwnProperty.call(inp, 'min')) {
+            field.min = inp.min;
+        }
+        if (Object.prototype.hasOwnProperty.call(inp, 'max')) {
+            field.max = inp.max;
+        }
+        if (Object.prototype.hasOwnProperty.call(inp, 'step')) {
+            field.step = inp.step;
+        }
+        if (preservedValues && Object.prototype.hasOwnProperty.call(preservedValues, inp.id)) {
+            field.value = preservedValues[inp.id];
+        }
 
         row.appendChild(lab);
         row.appendChild(field);
@@ -754,6 +798,20 @@ function renderProblem(p) {
             enableAutoResize(field);
         }
     });
+    if (preservedActiveId) {
+        const focusTarget = formEl.querySelector(`#${preservedActiveId}`);
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+            focusTarget.focus({ preventScroll: true });
+            if (preservedSelection && typeof focusTarget.setSelectionRange === 'function') {
+                try {
+                    focusTarget.setSelectionRange(preservedSelection.start, preservedSelection.end);
+                } catch (error) {
+                    const length = focusTarget.value.length;
+                    focusTarget.setSelectionRange(length, length);
+                }
+            }
+        }
+    }
 
     // Submit handler
     formEl.onsubmit = async (ev) => {
@@ -844,7 +902,26 @@ function renderFromParam() {
 
 function showStatus(text, kind) {
 
-    statusEl.textContent = text; statusEl.className = `status ${kind||''}`; statusEl.style.display = 'block';
+    if (!statusEl) return;
+    if (statusHideTimer) {
+        clearTimeout(statusHideTimer);
+        statusHideTimer = null;
+    }
+    if (!text) {
+        statusEl.textContent = '';
+        statusEl.className = 'status';
+        statusEl.style.display = 'none';
+        return;
+    }
+    statusEl.textContent = text;
+    statusEl.className = `status ${kind || ''}`.trim();
+    statusEl.style.display = 'block';
+    statusHideTimer = window.setTimeout(() => {
+        statusEl.style.display = 'none';
+        statusEl.textContent = '';
+        statusEl.className = 'status';
+        statusHideTimer = null;
+    }, 4500);
 
 }
 
