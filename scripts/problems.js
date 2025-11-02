@@ -226,17 +226,37 @@
         },
     ];
 
-    const battleProblems = problems.map((problem) => ({
-        id: `battle-${problem.id}`,
-        baseId: problem.id,
-        title: problem.title,
-        statement: problem.statement,
-        inputs: Array.isArray(problem.inputs)
-            ? problem.inputs.map((inp) => ({ ...inp }))
-            : [],
-        check: problem.check,
-        difficulty: problem.difficulty,
-    }));
+    const battleProblemIds = [
+        // Add the problem ids you want to include in battle mode below.
+        'p1',
+        'p2',
+        'p3',
+        'p4',
+        'p5',
+    ];
+
+    const PROBLEM_MAP = new Map(problems.map((problem) => [problem.id, problem]));
+
+    const battleProblems = battleProblemIds
+        .map((problemId) => {
+            const base = PROBLEM_MAP.get(problemId);
+            if (!base) {
+                console.warn(`Battle problem id "${problemId}" does not match any defined problem.`);
+                return null;
+            }
+            return {
+                id: `battle-${base.id}`,
+                baseId: base.id,
+                title: base.title,
+                statement: base.statement,
+                inputs: Array.isArray(base.inputs)
+                    ? base.inputs.map((inp) => ({ ...inp }))
+                    : [],
+                check: base.check,
+                difficulty: base.difficulty,
+            };
+        })
+        .filter(Boolean);
 
     return { utils, problems, groups, battleProblems };
 }));
