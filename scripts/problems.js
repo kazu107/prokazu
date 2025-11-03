@@ -190,6 +190,58 @@
                 '整数Nがxで割り切れるなら、N/xも約数です。この性質を利用すれば高速化できます。',
             ],
         },
+        {
+            id: 'p6',
+            title: 'Strange function',
+            difficulty: 'easy',
+            statement: `３つの関数 f, g, h が以下のように定義されています。</br><code>f(x) = 2x^2 + 3x + 5</code>,　<code>g(x) = -x^2 + 4x + 6</code>,　<code>h(x) = f(f(x) - g(x))</code>
+                        </br><code>(g(h(f(107) / g(107) - 2) * f(107) / g(107)) + f(107) * f(107) / 4 + g(107)) / h((f(g(107)) + g(g(107)) * 2) / f(107))</code></br>を求めてください。ただし、割り算は小数点以下切り捨てです。
+                        `,
+            explanation: `
+                s
+            `,
+            inputs: [
+                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 107' },
+            ],
+            check: (answers) => {
+                const ans = utils.parseNum(answers.ans);
+                const ok = (ans === 555);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                '関数をそのまま実装してみましょう。',
+                'あとはコピペするだけです。',
+            ],
+        },
+        {
+            id: 'p7',
+            title: 'Big integer',
+            difficulty: 'easy',
+            statement: `整数が与えられるので、各桁の和を求めてください。例えば、12345 の各桁の和は 1 + 2 + 3 + 4 + 5 = 15 です。</br>
+                        <code>26771254354590845472119977084908454721190845472119211988585767557687850547084590845472119084547211921199084547211908454721192119885857675576878508858576755768785072119084547211908454721192119885857675576878508454721195363653639084547211908454721192119885857675576878506536364534658770887645467897765</code>
+                        `,
+            explanation: `
+                s
+            `,
+            inputs: [
+                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 107' },
+            ],
+            check: (answers) => {
+                const ans = utils.parseNum(answers.ans);
+                const ok = (ans === 555);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                '整数として扱うのではなく、文字列として扱いましょう。',
+                '1文字ずつ取り出して数値に変換し、合計を求めましょう。',
+            ],
+        },
     ];
 
     const groups = [
@@ -202,7 +254,7 @@
         {
             id: 'easy',
             title: 'easy',
-            problemIds: ['p1'],
+            problemIds: ['p1', 'p6'],
         },
         {
             id: 'medium',
