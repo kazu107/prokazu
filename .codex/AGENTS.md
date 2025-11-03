@@ -1,25 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `index.html` hosts the single-page experience: markup, global styles, and the inline script that drives problem navigation, attempt tracking, and persistence.
-- Group UI helpers (DOM selectors, storage utilities, formatting) near the bottom script block; when logic grows, extract modules into `src/` and load them with `<script type="module" src="...">`.
-- Place future assets under `assets/` (images, icons) or `data/` (JSON problem sets) so static hosting stays trivial and relative paths remain predictable.
+The Node entrypoint lives in `server.js`, serving `index.html`, `battle.html`, and other static assets directly from the repository root. Shared problem definitions and helper utilities are maintained in `scripts/problems.js` and consumed on both the server and client (`scripts/main.js`, `scripts/battle.js`). Front-end styling is consolidated in `styles/main.css`, and images should live under `image/`. Keep environment-specific secrets out of version control; if you add new configuration keys, update this guide and include a scrubbed `.env.sample`.
+
+## Environment & Configuration
+Duplicate `.env` locally with the keys required by `server.js`: `PORT`, `HOST`, `DATABASE_URL`, and optional SSL flags (`DATABASE_SSL`, `PGSSLMODE`). When adding new secrets, reference them through `process.env` and provide fallbacks so Heroku-style deployments using `Procfile` continue to work. Avoid hard-coding connection strings in client bundles; route all persistence through the backend pool.
 
 ## Build, Test, and Development Commands
-- `npm install` prepares the workspace whenever new tooling (linters, bundlers, test runners) is introduced; the minimal `package.json` keeps lockfiles consistent across agents.
-- `npx http-server .`—or WebStorm’s Live Edit—serves the site from the repo root so you can iterate on query-parameter flows like `?id=prime-sums`.
-- `npm test` is currently a placeholder; wire it to your chosen runner before merging work that relies on automated verification.
+Run `npm install` once to sync Node dependencies. Use `npm run start` (alias for `node server.js`) for local development; the server automatically serves files under the project root, so reload the browser to pick up changes. When working with PostgreSQL-backed features, export a `DATABASE_URL` before starting the server. Replace the placeholder `npm test` script once automated tests exist.
 
 ## Coding Style & Naming Conventions
-- Use 4-space indentation for HTML/CSS/JS blocks and keep line length near 110 characters to preserve readability for bilingual copy.
-- Name DOM handles and helpers in lowerCamelCase (`problemList`, `buildProblemList`); reserve SCREAMING_SNAKE_CASE for constants such as `PROBLEMS`.
-- Maintain paired Japanese/English strings (for example, `選択中 / Selected`) and update both halves in tandem.
+Use modern JavaScript with `const`/`let`, 4-space indentation, and trailing commas for multi-line literals. Keep constants in `UPPER_SNAKE_CASE` (see `MIME_TYPES`) and functions or variables in `camelCase`. Mirror the existing module structure (`scripts/<feature>.js`) and avoid introducing global variables on the client; attach shared data to `window` only when required by the UI.
 
 ## Testing Guidelines
-- For logic extracted from `index.html`, add unit specs under `tests/` with the suffix `.spec.js` and register them under `npm test`.
-- Perform manual smoke checks on the attempt counter, localStorage resets, and share-link copy whenever the submission flow changes.
-- Capture at least one screenshot or short clip of the solved-state banner when altering UI styling so reviewers can validate regressions quickly.
+Automated coverage is currently absent; prefer `node --test` or Jest with files placed under `scripts/__tests__/` or `tests/`. Replace the placeholder `npm test` command with the chosen runner and ensure it exits non-zero on failure. Add fixtures for problem definitions so both server rendering and client grouping logic are exercised. Document any manual regression steps for features such as battle mode and board submissions until automated coverage is in place.
 
 ## Commit & Pull Request Guidelines
-- No git history exists yet; adopt Conventional Commits (`feat: add fibonacci puzzle`, `fix: handle zero attempts`) to keep future logs searchable.
-- Pull requests should include a concise summary, test evidence (commands or screenshots), and call out any new query parameters or localStorage keys that downstream hosting must allow.
+History favors short imperative summaries (often in Japanese, e.g., "dotenv修正"). Continue using concise subject lines and include context in the body when changes are complex. For pull requests, link the relevant issue or Trello card, outline testing performed (commands and datasets), and attach browser screenshots for UI updates. Confirm database migrations or seed scripts before requesting review and ensure lints/tests pass locally.
