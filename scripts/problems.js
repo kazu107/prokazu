@@ -78,7 +78,7 @@
                 const ok = utils.eqNum(answer, correct);
                 return {
                     ok,
-                    message: ok ? '正解です！' : '不正解です。包除原理を使って再確認してみましょう。',
+                    message: ok ? '正解です！' : '不正解です。',
                 };
             },
             hints: [

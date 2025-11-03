@@ -10,6 +10,10 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 const STATIC_ROOT = path.join(__dirname);
 
+const dotenv = require("dotenv");
+
+dotenv.config();
+
 const MIME_TYPES = {
     '.html': 'text/html; charset=utf-8',
     '.css': 'text/css; charset=utf-8',
