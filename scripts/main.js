@@ -848,6 +848,22 @@ function renderProblem(p) {
                 solvedMarkEl.textContent = 'Solved';
                 buildProblemList(p.id);
                 showStatus(message, 'ok');
+                const answerFields = Array.from(formEl.elements || []).filter((el) => (
+                    el instanceof HTMLInputElement
+                    || el instanceof HTMLTextAreaElement
+                ));
+                answerFields.forEach((field) => {
+                    if (field instanceof HTMLInputElement) {
+                        if (field.type === 'checkbox' || field.type === 'radio') {
+                            field.checked = false;
+                        } else {
+                            field.value = '';
+                        }
+                    } else if (field instanceof HTMLTextAreaElement) {
+                        field.value = '';
+                        autoResizeTextarea(field);
+                    }
+                });
             } else {
                 solvedMarkEl.textContent = storage.isSolved(p.id) ? 'Solved' : '';
                 showStatus(message, 'bad');
