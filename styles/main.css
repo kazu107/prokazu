@@ -301,7 +301,7 @@ main.container {
 .badge { padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; background: #0f151e; }
 
 .statement { background: var(--muted); border:1px solid var(--border); border-radius: 10px; padding: 14px; line-height: 1.7; }
-.statement code { background: var(--code); padding: 2px 6px; border-radius: 6px; border: 1px solid #1b2735; }
+.statement code { background: var(--code); padding: 2px 6px; border-radius: 6px; border: 1px solid #1b2735; overflow-wrap: anywhere; word-break: break-word; }
 
 .problem-tabs {
     display: flex;

@@ -70,7 +70,7 @@
                 eaeee
             `,
             inputs: [
-                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 233168' },
+                { id: 'ans', label: 'Answer', type: 'text', placeholder: 'e.g. 107' },
             ],
             check: (answers) => {
                 const answer = utils.parseNum(answers.ans);
@@ -151,7 +151,7 @@
                 s
             `,
             inputs: [
-                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 57' },
+                { id: 'ans', label: 'Answer', type: 'number', placeholder: 'e.g. 57' },
             ],
             check: (answers) => {
                 const ans = utils.parseNum(answers.ans);
@@ -175,7 +175,7 @@
                 s
             `,
             inputs: [
-                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 12' },
+                { id: 'ans', label: 'Answer', type: 'number', placeholder: 'e.g. 12' },
             ],
             check: (answers) => {
                 const ans = utils.parseNum(answers.ans);
@@ -194,14 +194,14 @@
             id: 'p6',
             title: 'Strange function',
             difficulty: 'easy',
-            statement: `３つの関数 f, g, h が以下のように定義されています。</br><code>f(x) = 2x^2 + 3x + 5</code>,　<code>g(x) = -x^2 + 4x + 6</code>,　<code>h(x) = f(f(x) - g(x))</code>
+            statement: `３つの関数 f, g, h が以下のように定義されています。</br><code>f(x) = 2x^2 + 3x + 5</code>,　<code>g(x) = -x^2 + 4x + 6</code>,　<code>h(x) = f(f(x) - g(x))</code></br>次の式
                         </br><code>(g(h(f(107) / g(107) - 2) * f(107) / g(107)) + f(107) * f(107) / 4 + g(107)) / h((f(g(107)) + g(g(107)) * 2) / f(107))</code></br>を求めてください。ただし、割り算は小数点以下切り捨てです。
                         `,
             explanation: `
                 s
             `,
             inputs: [
-                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 107' },
+                { id: 'ans', label: 'Answer', type: 'number', placeholder: 'e.g. 107' },
             ],
             check: (answers) => {
                 const ans = utils.parseNum(answers.ans);
@@ -227,19 +227,69 @@
                 s
             `,
             inputs: [
-                { id: 'ans', label: 'Answer (整数)', type: 'number', placeholder: 'e.g. 107' },
+                { id: 'ans', label: 'Answer', type: 'number', placeholder: 'e.g. 107' },
             ],
             check: (answers) => {
                 const ans = utils.parseNum(answers.ans);
-                const ok = (ans === 555);
+                const ok = (ans === 1481);
                 return {
                     ok,
                     message: ok ? '正解です！' : '不正解です。',
                 };
             },
             hints: [
-                '整数として扱うのではなく、文字列として扱いましょう。',
+                '最初は整数として扱うのではなく、文字列として扱いましょう。',
                 '1文字ずつ取り出して数値に変換し、合計を求めましょう。',
+            ],
+        },
+        {
+            id: 'p8',
+            title: 'Next character',
+            difficulty: 'easy',
+            statement: `a~zで構成される文字列が与えられるので、各文字を次のアルファベットに置き換えた文字列を出力してください。ただし、zの次はaとします。</br>
+                        <code>mmlpzaqoiehaijgosjhsrdaijgosppobbmhsrdaijgosppobbmkaijgazcvxmppobbmkfsisjhhsrdaijgosppobbmgtujhsrdaijgosppobbvvqringmhnbvmkaihsrdaijgosppobbmjggnnbpmoywbqlgjhsrdaijgosppobbmkaijgosppobbmkfsisjhgfsisjhaijgosppobbmkfsisjhggywbqlgjhsrdaijgosppobbmkflspsihiyuiqsjbywbqlgjhsrdaijgosppobbmkfzikfbsiygblsjbkljbfjfb</code>
+                        `,
+            explanation: `
+                s
+            `,
+            inputs: [
+                { id: 'ans', label: 'Answer', type: 'text', placeholder: 'e.g. 107' },
+            ],
+            check: (answers) => {
+                const ans = answers.ans;
+                const ok = (ans === "nnmqabrpjfibjkhptkitsebjkhptqqpccnitsebjkhptqqpccnlbjkhbadwynqqpccnlgtjtkiitsebjkhptqqpccnhuvkitsebjkhptqqpccwwrsjohniocwnlbjitsebjkhptqqpccnkhhoocqnpzxcrmhkitsebjkhptqqpccnlbjkhptqqpccnlgtjtkihgtjtkibjkhptqqpccnlgtjtkihhzxcrmhkitsebjkhptqqpccnlgmtqtjijzvjrtkczxcrmhkitsebjkhptqqpccnlgajlgctjzhcmtkclmkcgkgc");
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                '各プログラミング言語には文字コードを取得・変換する関数が用意されています。（多分）',
+                'ASCIIコードでaは97、zは122です。zの次はaに戻るように注意しましょう。',
+            ],
+        },
+        {
+            id: 'p9',
+            title: 'Exponentiation candy',
+            difficulty: 'easy',
+            statement: `1円, 2, 4, 8, 16, ..., 2^n円のキャンディがそれぞれ1個ずつ売られています。1070000円を持っているとき、最大で何個のキャンディを買うことができるか求めてください。`,
+            explanation: `
+                eaeee
+            `,
+            inputs: [
+                { id: 'ans', label: 'Answer', type: 'number', placeholder: 'e.g. 107' },
+            ],
+            check: (answers) => {
+                const answer = utils.parseNum(answers.ans);
+                const ok = (answer === 20);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                'まず、1, 2, 4, ...を数値として作ってみましょう。',
+                '1, 2, 4, ...を足していきましょう。',
             ],
         },
     ];
@@ -254,12 +304,12 @@
         {
             id: 'easy',
             title: 'easy',
-            problemIds: ['p1', 'p6'],
+            problemIds: ['p1', 'p6', 'p7', 'p8'],
         },
         {
             id: 'medium',
             title: 'medium',
-            problemIds: ['p3', 'p5'],
+            problemIds: ['p3', 'p5', 'p9'],
         },
         {
             id: 'hard',

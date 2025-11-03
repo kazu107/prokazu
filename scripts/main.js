@@ -559,7 +559,7 @@ function renderLanding() {
 
     titleEl.textContent = 'Euler-like Problems について';
     stmtEl.innerHTML = `
-        <p>このサイトでは Project Euler 風の数学パズルをブラウザだけで学習できます。</p>
+        <p>このサイトではProject Euler風の数学パズルをブラウザだけで学習できます。お好きなプログラミング言語を駆使して、問題を解いてみましょう。</p>
         <ol>
             <li>左のリストから挑戦したい問題を選びます。</li>
             <li>問題文の下にある入力欄へ答えを入力し、「提出」ボタンを押します。</li>
