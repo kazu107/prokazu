@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
@@ -8,13 +8,27 @@
 </head>
 <body data-github-url="https://github.com/">
 <header>
-    <a id="homeLink" class="container brand" href="./">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-            <div class="title">Euler-like Problems</div>
-            <div class="muted" style="font-size:12px">対戦モードでスコアを競おう</div>
-        </div>
-    </a>
+    <div class="container header-inner">
+        <a id="homeLink" class="brand" href="./">
+            <div class="logo" aria-hidden="true"></div>
+            <div>
+                <div class="title">Euler-like Problems</div>
+                <div class="muted" style="font-size:12px">対戦モードでスコアを競おう</div>
+            </div>
+        </a>
+        <button type="button"
+                class="menu-toggle"
+                aria-expanded="false"
+                aria-controls="siteMenu"
+                data-menu-toggle>
+            <span class="menu-toggle-icon" aria-hidden="true"></span>
+            <span class="sr-only">メニューを開く</span>
+        </button>
+        <nav id="siteMenu" class="site-menu" data-menu hidden>
+            <a class="site-menu-link" data-menu-link="problem" href="./">problem</a>
+            <a class="site-menu-link" data-menu-link="battle" href="./battle.html">battle</a>
+        </nav>
+    </div>
 </header>
 
 <main class="container">
@@ -36,13 +50,13 @@
                 <div class="battle-timer" id="battleTimer" aria-live="polite"></div>
             </div>
 
-            <h2 id="battleProblemTitle">バトルに参加して問題を解きましょう</h2>
+            <h2 id="battleProblemTitle">繝舌ヨ繝ｫ縺ｫ蜿ょ刈縺励※蝠城｡後ｒ隗｣縺阪∪縺励ｇ縺・/h2>
             <div id="battleProblemStatement" class="statement battle-statement"></div>
 
             <form id="battleAnswerForm" class="battle-answer-form" autocomplete="off"></form>
             <div class="battle-actions">
-                <button type="submit" form="battleAnswerForm" class="primary">回答を送信</button>
-                <button type="button" id="battleResetBtn" class="ghost">入力をクリア</button>
+                <button type="submit" form="battleAnswerForm" class="primary">蝗樒ｭ斐ｒ騾∽ｿ｡</button>
+                <button type="button" id="battleResetBtn" class="ghost">蜈･蜉帙ｒ繧ｯ繝ｪ繧｢</button>
             </div>
 
             <div id="battleFeedback" class="status" style="display:none"></div>
@@ -74,6 +88,7 @@
     </div>
 </footer>
 
+<script src="scripts/nav.js"></script>
 <script src="scripts/battle.js"></script>
 <script>
     (function () {
@@ -91,3 +106,4 @@
 </script>
 </body>
 </html>
+
