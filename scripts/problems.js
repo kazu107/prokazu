@@ -322,6 +322,34 @@
                 '1, 2, 4, ...を足していきましょう。',
             ],
         },
+        {
+            id: 'p11',
+            title: 'preview or next',
+            difficulty: 'medium',
+            statement: `a~zで構成される文字列s, tが与えられるので、以下の操作をsに対して何回行えばtになるか、最小を求めてください。</br>
+                        <code>文字列sの好きな文字を次か前のアルファベットにする。ただし、zの次はa、aの前はzとします。</code></br>
+                        文字列s:<code>azplcvcmkodiqaiudhyurbbzgytztareqsreplmpokoijhzihbuhvugyshhyufgaaskjofsdjokisfdiygutfjkhdvfghfsfghiusfiuhfgshihugsfhjkgsfhjgmmnzaqpwiugrqeeeohhfevjhjholmpjfytrtrjghvhhfhbkyuhfregbiasvfegrhauybsvikhafuyebgvsrikafehrguvbyikskjndfvlpzjhaifdiygqyhgtfeyryufvbvnnmnvjgkjhgfhj</code></br>
+                        t:<code>qsreplmpokoijpokoijhzihhzihbuhvsfuhuhuhjhfjdgsjhwgufyrtyassqopzxckmnzcsouhfnbiuysiufhbjihfbishjbfuuhjihbhjhfvbhbxujfbihjfijjqehdpofiuurfhggufgzihbyhugvuhuabhuhnhjfbghgbhfibhhbjqasazfpolblbmkmbodfsgivytruyedhibidbvzmclvppplvpjiuydhfuhsbfuhsguhsifhiihigsgsugyshhyufgaaskj</code>
+                        `,
+            explanation: `
+                eaeee
+            `,
+            inputs: [
+                { id: 'ans', label: 'answer', type: 'number', placeholder: 'e.g. 107' },
+            ],
+            check: (answers) => {
+                const ans = utils.parseNum(answers.ans);
+                const ok = (ans === 1723);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                'アルファベットを数値に変換してみましょう。',
+                's, tの各文字の差を求め、最小の操作回数を計算しましょう。',
+            ],
+        },
     ];
 
     const groups = [
@@ -339,7 +367,7 @@
         {
             id: 'medium',
             title: 'medium',
-            problemIds: ['p3', 'p5', 'p9'],
+            problemIds: ['p3', 'p5', 'p9', 'p11'],
         },
         {
             id: 'hard',
