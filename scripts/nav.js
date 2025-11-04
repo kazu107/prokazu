@@ -49,8 +49,9 @@
 
         const currentPath = (window.location.pathname || '/').replace(/\\/g, '/');
         const normalizedPath = currentPath.endsWith('/') ? currentPath.slice(0, -1) || '/' : currentPath;
-        const isBattle = normalizedPath.toLowerCase().endsWith('/battle.html');
-        const isRoot = normalizedPath === '/' || normalizedPath.toLowerCase().endsWith('/index.html');
+        const lowerPath = normalizedPath.toLowerCase();
+        const isBattle = ['/battle.html', '/battle.index', '/battle.index.html'].some((suffix) => lowerPath.endsWith(suffix));
+        const isRoot = normalizedPath === '/' || lowerPath.endsWith('/index.html');
 
         menu.querySelectorAll('[data-menu-link]').forEach((link) => {
             if (!(link instanceof HTMLAnchorElement)) return;

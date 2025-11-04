@@ -80,6 +80,7 @@
             headers: {
                 Accept: 'application/json',
             },
+            cache: 'no-store',
             ...options,
         };
         if (init.body && typeof init.body === 'object' && !(init.body instanceof FormData)) {
@@ -852,6 +853,7 @@
             const payload = {
                 name,
                 roomId,
+                room: roomId,
                 token: state.token || undefined,
             };
             const response = await apiRequest(`${API_ROOT}/rooms/join`, {

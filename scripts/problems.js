@@ -65,12 +65,12 @@
             id: 'p1',
             title: 'Multiples of 3 or 5 below 1000',
             difficulty: 'easy',
-            statement: `1000 未満の自然数のうち、<code>3</code> または <code>5</code> の倍数の総和を求めてください。<br />Enter the total sum (an integer).`,
+            statement: `1000 未満の自然数のうち、<code>3</code> または <code>5</code> の倍数の総和を求めてください。`,
             explanation: `
                 eaeee
             `,
             inputs: [
-                { id: 'ans', label: 'Answer', type: 'text', placeholder: 'e.g. 107' },
+                { id: 'ans', label: 'Answer', type: 'number', placeholder: 'e.g. 107' },
             ],
             check: (answers) => {
                 const answer = utils.parseNum(answers.ans);
@@ -292,6 +292,36 @@
                 '1, 2, 4, ...を足していきましょう。',
             ],
         },
+        {
+            id: 'p10',
+            title: 'Find character',
+            difficulty: 'easy',
+            statement: `a~zで構成される文字列が与えられるので、<code>k</code>, <code>a</code>, <code>z</code>がそれぞれ何回出現するかを求めてください。</br>
+                        <code>apolmckkzoieeuyoieeuyapolmckkzapolmckkzoieeuywujwwujwjnnnvldgohijvfhugoieeuywujwjnnnvldgohijvfhugtyauwyweghdgohijvfauwyweghdgohijugtyvfhugtyauwyweghgohijhugtynnnvtyvfhugtyauwyweghbxmnvpjtyauhugtynnnvlldgohijvfhugtyvfhugtyauwyweghbxmnvpjtyauhugtynnnvldgohijvfhwywgohijhugtynnnvldgohijvfhugtyvfhugtyauwyweghebxmnvpjtyauwyweauwyweghbxmnvpjtyauwywebxmnvpjtyauwyweghbxmnvpjlhzkkijgjdiutyawyuizieghbxmnzkjkfybyufzxmvpjlhzkkijgjdiutyawyuvpjlhzkkijgjdiutyawyuizieghbxmnzkjkfybyufizieghbxmnzkjkfybyufyuxmvpjlhkijgjadiutywyuiiueruvmlkknzkvaqdwtyrioyptueruvmlkknzvaqdwtyrioyptoiuyhvnhftytjjghjkgfhhcbvmxcfvdfkzfhjyufh</code>
+                        `,
+            explanation: `
+                eaeee
+            `,
+            inputs: [
+                { id: 'k', label: 'k', type: 'number', placeholder: 'e.g. 107' },
+                { id: 'a', label: 'a', type: 'number', placeholder: 'e.g. 108' },
+                { id: 'z', label: 'z', type: 'number', placeholder: 'e.g. 109' },
+            ],
+            check: (answers) => {
+                const k = utils.parseNum(answers.k);
+                const a = utils.parseNum(answers.a);
+                const z = utils.parseNum(answers.z);
+                const ok = (k === 26 && a === 21 && z === 16);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : '不正解です。',
+                };
+            },
+            hints: [
+                'まず、1, 2, 4, ...を数値として作ってみましょう。',
+                '1, 2, 4, ...を足していきましょう。',
+            ],
+        },
     ];
 
     const groups = [
@@ -304,7 +334,7 @@
         {
             id: 'easy',
             title: 'easy',
-            problemIds: ['p1', 'p6', 'p7', 'p8'],
+            problemIds: ['p1', 'p6', 'p7', 'p8', 'p10'],
         },
         {
             id: 'medium',

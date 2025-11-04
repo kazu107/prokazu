@@ -19,6 +19,7 @@ const MIME_TYPES = {
     '.css': 'text/css; charset=utf-8',
     '.js': 'application/javascript; charset=utf-8',
     '.json': 'application/json; charset=utf-8',
+    '.index': 'text/html; charset=utf-8',
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
@@ -65,6 +66,9 @@ function sendJson(res, statusCode, payload) {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(body),
         'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
     });
     res.end(body);
 }
@@ -693,8 +697,11 @@ async function handleBattleJoinRequest(req, res) {
         const payload = await readJsonBody(req);
         cleanupBattleGames();
 
-        let { roomId, name, playerName, token: existingToken, playerToken } = payload || {};
+        let { roomId, room, name, playerName, token: existingToken, playerToken } = payload || {};
         let desiredId = typeof roomId === 'string' ? roomId.trim().toUpperCase() : '';
+        if (!desiredId && typeof room === 'string') {
+            desiredId = room.trim().toUpperCase();
+        }
         if (desiredId && !/^[A-Z0-9-]{4,12}$/.test(desiredId)) {
             sendJson(res, 400, { ok: false, message: 'Room ID must be 4-12 alphanumeric characters.' });
             return;
