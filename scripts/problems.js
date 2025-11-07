@@ -90,7 +90,7 @@
             id: 'p2',
             title: 'Find integers a, b (a + b = 10, ab = 21)',
             difficulty: 'basic',
-            statement: `整数 <em>a</em>, <em>b</em> が <code>a + b = 10</code>, <code>ab = 21</code> を満たすようにしてください。順序は問いません。`,
+            statement: `<code>a + b = 10</code>, <code>ab = 21</code> を満たす整数a, bの組を１つ答えてください。順序は問いません。`,
             explanation: `
                 <p><code>a + b = 10</code> と <code>ab = 21</code> を満たす整数は、2 次方程式 <code>x^2 - 10x + 21 = 0</code> の解として求まります。</p>
                 <p>因数分解すると <code>(x - 3)(x - 7) = 0</code> なので解は 3 と 7 です。順序を問わなければ (3, 7) と (7, 3) の 2 通りです。</p>
