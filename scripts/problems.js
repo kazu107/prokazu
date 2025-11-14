@@ -350,6 +350,31 @@
                 's, tの各文字の差を求め、最小の操作回数を計算しましょう。',
             ],
         },
+        {
+            id: 'p12',
+            title: '107107th Fibonacci number',
+            difficulty: 'easy',
+            statement: `<p>フィボナッチ数列を <code>F(0) = 1</code>, <code>F(1) = 0</code>, <code>F(2) = 7</code>, <code>F(n) = F(n-1) + F(n-2) - F(n-3)</code> （<code>n ≥ 3</code>）で定義します。</p>
+                        <code>F(107107)</code> を求めてください。</p>`,
+            explanation: `
+                <p>小</p>
+            `,
+            inputs: [
+                { id: 'ans', label: 'F(107107)', type: 'number', placeholder: 'e.g. 55' },
+            ],
+            check: (answers) => {
+                const ans = utils.parseNum(answers.ans);
+                const ok = (ans === 321318);
+                return {
+                    ok,
+                    message: ok ? '正解です！' : `不正解です。です。`,
+                };
+            },
+            hints: [
+                'このフィボナッチ数列では直前3項の加減算が次の値になります。',
+                'F(3) = F(2) + F(1) - F(0)、F(4) = F(3) + F(2) - F(1) と順に計算していきましょう。',
+            ],
+        },
     ];
 
     const groups = [
@@ -367,7 +392,7 @@
         {
             id: 'medium',
             title: 'medium',
-            problemIds: ['p3', 'p5', 'p9', 'p11'],
+            problemIds: ['p3', 'p5', 'p9', 'p11', 'p12'],
         },
         {
             id: 'hard',
